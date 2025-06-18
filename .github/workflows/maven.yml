@@ -51,9 +51,7 @@ jobs:
       uses: actions/download-artifact@v4.3.0
       with:
           # Name of the artifact to download. If unspecified, all artifacts for the run are downloaded.
-          name: download
-          # IDs of the artifacts to download, comma-separated. Either inputs `artifact-ids` or `name` can be used, but not both.
-          artifact-ids: identity
+          name: package
           # Destination path. Supports basic tilde expansion. Defaults to $GITHUB_WORKSPACE
           path: staging
           # The repository owner and the repository name joined together by "/". If github-token is specified, this is the repository that artifacts will be downloaded from.
