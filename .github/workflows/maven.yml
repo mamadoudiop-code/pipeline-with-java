@@ -8,6 +8,10 @@ on:
   pull_request:
     branches: [ "main" ]
 
+env:
+  #SPRINT_NUMBER: "32.6.0" # Définissez votre numéro de sprint ici
+  # Ou extrayez-le dynamiquement si votre branche de release le contient
+  SPRINT_NUMBER: ${{ github.ref_name }} # Si le nom de votre branche est '32.6.0' par exemple
 jobs:
   build_test:
 
@@ -45,13 +49,13 @@ jobs:
         mkdir staging && cp target/*.jar staging
     - uses: actions/upload-artifact@v4
       with:
-        name: Package
+        name: identityiq
         path: staging
     - name: Download a Build Artifact
       uses: actions/download-artifact@v4.3.0
       with:
           # Name of the artifact to download. If unspecified, all artifacts for the run are downloaded.
-          name: package
+          name: identityiq
           # Destination path. Supports basic tilde expansion. Defaults to $GITHUB_WORKSPACE
           path: staging
           # The repository owner and the repository name joined together by "/". If github-token is specified, this is the repository that artifacts will be downloaded from.
