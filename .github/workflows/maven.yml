@@ -26,6 +26,7 @@ jobs:
     - name: some test
       run: |
         echo "mamadou"
+        ls -l
 
    
   publish-job:
