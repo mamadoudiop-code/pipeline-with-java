@@ -84,4 +84,4 @@ jobs:
           --interactive=false
       - name: upload artefact
         run:
-          jf rt u "staging/${{ steps.set_package_name.outputs.package_name }}" "https://trialcptx99.jfrog.io/ui/native/identityiq-libs-snapshot/com/jfrog/my-jfrog-app/1.0-SNAPSHOT"
+          jf rt u "staging/${{ steps.set_package_name.outputs.package_name }}" "identityiq-libs-snapshot/com/jfrog/my-jfrog-app/1.0-SNAPSHOT"
