@@ -18,10 +18,7 @@
   <!-- FIXME change it to the project's website -->
   <url>https://trialcptx99.jfrog.io/artifactory/identityiq-libs-snapshot/com/jfrog/my-jfrog-app/</url>
 	
-	<groupId>org.springframework</groupId>
-	<artifactId>gs-maven</artifactId>
-	<packaging>jar</packaging>
-	<version>0.1.0</version>
+	
 
 	<properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
