@@ -75,7 +75,7 @@ jobs:
         run: |
           curl -fL https://install-cli.jfrog.io | sh
           sudo mv jfog /usr/local/bin/jfrog
-          
+          jfrog -v
       - name: configure jfrog cli
         run: |
           ./jfrog config add my-artifactory \
