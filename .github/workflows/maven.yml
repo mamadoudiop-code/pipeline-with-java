@@ -12,7 +12,7 @@ env:
   #SPRINT_NUMBER: "32.6.0" # Définissez votre numéro de sprint ici
   # Ou extrayez-le dynamiquement si votre branche de release le contient
   SPRINT_NUMBER: ${{ github.ref_name }} # Si le nom de votre branche est '32.6.0' par exemple
-  ARTIFACTORY_URL: 'https://trialcptx99.jfrog.io/ui/native/identityiq-libs-snapshot/com/jfrog/my-jfrog-app/'
+  ARTIFACTORY_URL: 'https://trialcptx99.jfrog.io/ui/native/identityiq-libs-snapshot/com/jfrog/my-jfrog-app'
   ARTIFACTORY_REPO: '1.0-SNAPSHOT' # Nom du dépôt Artifactory pour les fichiers génériques (créez-en un si besoin)
 jobs:
   build_test:
