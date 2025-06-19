@@ -73,7 +73,7 @@ jobs:
           curl -fL https://install-cli.jfrog.io | sh
       - name: configure jfrog cli
         run: |
-          ./jfrog config add my-artifactory \
+          ./jfrog config add staging \
           --url=${{ secrets.ARTIFACTORY_URL}} \
           --user=${{ secrets.ARTIFACTORY_USERNAME}} \
           --password=${{ secrets.ARTIFACTORY_PASSWORD}} \
