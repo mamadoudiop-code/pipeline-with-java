@@ -10,9 +10,11 @@
         <url>https://trialcptx99.jfrog.io/artifactory/identityiq-libs-snapshot</url>
     </snapshotRepository>
 </distributionManagement>
-<groupId>com.jfrog</groupId>
-  <artifactId>my-jfrog-app</artifactId>
- <version>1.0-SNAPSHOT</version>
+
+ <groupId>org.springframework</groupId>
+	<artifactId>gs-maven</artifactId>
+	<packaging>jar</packaging>
+	<version>0.1.0</version>
 
  <name>my-jfrog-app</name>
   <!-- FIXME change it to the project's website -->
