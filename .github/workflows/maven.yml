@@ -74,12 +74,10 @@ jobs:
       - name: install jfrog cli
         run: |
           curl -fL https://install-cli.jfrog.io | sh
-          cd /usr/local/bin
-          ls -l
-          sudo jfrog -v
+          jf -v
       - name: configure jfrog cli
         run: |
-          ./jfrog config add my-artifactory \
+          ./jf config add my-artifactory \
           --url=$ARTIFACTORY_URL \
           --user=$ARTIFACTORY_USERNAME \
           --password=$ARTIFACTORY_PASSWORD \
