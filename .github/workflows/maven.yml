@@ -74,6 +74,7 @@ jobs:
       - name: install jfrog cli
         run: |
           curl -fL https://install-cli.jfrog.io | sh
+          cd /usr/local/bin
           ./jfrog -v
       - name: configure jfrog cli
         run: |
