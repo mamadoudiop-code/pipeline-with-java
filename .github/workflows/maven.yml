@@ -31,10 +31,11 @@ jobs:
       run: |
         echo "mamadou"
         ls -l
-
+  
   publish-job:
     runs-on: ubuntu-latest
     needs: build_test
+    if: github.event_name == 'push' # Cest la condition clé !
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
