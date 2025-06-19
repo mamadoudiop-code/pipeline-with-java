@@ -29,7 +29,7 @@ jobs:
       run: mvn -B package --file pom.xml
     - name: some test
       run: |
-        echo "mamad"
+        echo "mamadou"
         ls -l
 
   publish-job:
