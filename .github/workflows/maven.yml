@@ -77,7 +77,7 @@ jobs:
           jf -v
       - name: configure jfrog cli
         run: |
-          ./jf config add my-artifactory \
+          jf config add my-artifactory \
           --url=$ARTIFACTORY_URL \
           --user=$ARTIFACTORY_USERNAME \
           --password=$ARTIFACTORY_PASSWORD \
