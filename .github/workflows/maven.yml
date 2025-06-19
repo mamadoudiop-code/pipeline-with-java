@@ -74,6 +74,7 @@ jobs:
       - name: install jfrog cli
         run: |
           curl -fL https://install-cli.jfrog.io | sh
+          chmod +x jfrog
       - name: configure jfrog cli
         run: |
           ./jfrog config add my-artifactory \
