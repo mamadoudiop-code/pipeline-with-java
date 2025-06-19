@@ -68,20 +68,6 @@ jobs:
         with:
           name: ${{ steps.set_package_name.outputs.package_name }}
           path: staging
-      - name: Publish generic package to Artifactory
+      - name: install jfrog cli
         run: |
-          # Construisez l'URL de destination dans Artifactory
-          # Exemple: http://your-artifactory-url:8081/artifactory/generic-local/path/to/your/package-name.zip
-          DESTINATION_URL="${{ env.ARTIFACTORY_URL }}/${{ env.ARTIFACTORY_REPO }}/${{ steps.set_package_name.outputs.package_name }}"
-          
-          echo "Déploiement de ${{ steps.set_package_name.outputs.package_name }} vers ${DESTINATION_URL}"
-
-          # Utilisez curl pour uploader le fichier
-          curl -u "${{ secrets.ARTIFACTORY_USERNAME }}:${{ secrets.ARTIFACTORY_PASSWORD }}" \
-                -X PUT "${DESTINATION_URL}" \
-                -T "${{ steps.set_package_name.outputs.package_name }}" \
-                -H "X-Checksum-Sha1: $(sha1sum ${{ steps.set_package_name.outputs.package_name }} | awk '{print $1}')" \
-                -H "X-Checksum-Md5: $(md5sum ${{ steps.set_package_name.outputs.package_name }} | awk '{print $1}')"
-        shell: bash
-
-
+          curl -fL https://install-cli.jfrog.io | sh
