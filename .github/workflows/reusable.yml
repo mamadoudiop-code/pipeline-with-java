@@ -1,0 +1,17 @@
+# .github/workflows/reusable.yml
+name: Reusable Workflow
+
+on:
+  workflow_call:
+    inputs:
+      my_input:
+        description: 'A custom input string'
+        required: true
+        type: string
+
+jobs:
+  display_input:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Show the input
+        run: echo "The input value is ${{ github.event.inputs.my_input }}"
