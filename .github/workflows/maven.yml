@@ -9,10 +9,11 @@ on:
     branches: [ "main" ]
   workflow_call:
     inputs:
-      config-path:
-        required: true
+      username:
+        description: 'A username passed from the caller workflow'
+        default: 'john-doe'
+        required: false
         type: string
-        default: "moi"
 
 env:
   #SPRINT_NUMBER: "32.6.0" # Définissez votre numéro de sprint ici
@@ -31,10 +32,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: some test
-      run: |
-        echo "mamadou"
-        ls -l
-        echo ${{ inputs.config-path }}
+      run: echo The username is ${{ inputs.username }}
     - name: Set up JDK 17
       uses: actions/setup-java@v3
       with:
