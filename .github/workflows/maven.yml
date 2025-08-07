@@ -30,7 +30,7 @@ jobs:
 
     steps:
     - name: some test
-      run: echo The username is ${{ inputs.username }}
+      run: echo The username is ${{ github.event.inputs.username }}
     - uses: actions/checkout@v3
     - name: Set up JDK 17
       uses: actions/setup-java@v3
