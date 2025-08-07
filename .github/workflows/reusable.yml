@@ -1,5 +1,5 @@
 # .github/workflows/reusable.yml
-name: Reusable Workflow
+name: Reusable Workflo
 
 on:
   pull_request:
