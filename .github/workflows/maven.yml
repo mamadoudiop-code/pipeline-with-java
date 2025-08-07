@@ -14,10 +14,6 @@ on:
         description: 'A custom string input'
         required: true
         type: string
-      run-on:
-        description: 'A custom string input'
-        required: true
-        type: string
 
 
 env:
