@@ -8,7 +8,7 @@ on:
     inputs:
       my_input:
         description: 'A custom input string'
-        required: true
+        required: false
         type: string
         default: "hello"
       run-on:
