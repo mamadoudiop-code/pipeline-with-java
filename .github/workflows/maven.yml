@@ -27,67 +27,8 @@ env:
   ARTIFACTORY_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME}}
 jobs:
   build_test:
-
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v3
-    - name: Print the workflow_call input
-      run: echo "The input value is ${{ github.event.inputs.my_input }}"
-    - name: Set up JDK 17
-      uses: actions/setup-java@v3
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-        cache: maven
-    - name: Build with Maven
-      run: mvn -B package --file pom.xml
-  
-  publish-job:
-    runs-on: ubuntu-latest
-    needs: build_test
-    if: github.event_name == 'push' # Cest la condition clé !
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-      - name: Installer java
-        uses: actions/setup-java@v3
-        with: 
-          java-version: '17'
-          distribution: 'temurin'
-      - name: vérifier le snapchot avec maven
-        run: mvn --batch-mode --update-snapshots verify
-      - name: création du dossier et copie des données de l'artefact
-        run: |
-          ls -l
-          echo "contenu du target"
-          ls target
-          mkdir staging && cp target/*.jar staging
-      - name: Simuler la création du packag IIQ
-        id: set_package_name
-        run: |
-          # Obtenez un horodatage unique (secondes depuis l'époque)
-          TIMESTAMP=$(date +%s)
-          # Combinez le nom de base, le numéro de sprint, le numéro d'exécution et l'horodatage
-          # Cela rend le nom très unique et facile à suivre
-          PACKAGE_NAME="identityiq-${{ env.SPRINT_NUMBER }}.${{ github.run_number }}-${TIMESTAMP}"
-          echo "package_name=$PACKAGE_NAME" >> $GITHUB_OUTPUT
-      - name: Télécharger l'artéfact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ steps.set_package_name.outputs.package_name }}
-          path: staging
-      - name: install jfrog cli
-        run: |
-          curl -fL https://install-cli.jfrog.io | sh
-          jf -v
-      - name: configure jfrog cli
-        run: |
-          jf config add my-artifactory \
-          --url=$ARTIFACTORY_URL \
-          --user=$ARTIFACTORY_USERNAME \
-          --password=$ARTIFACTORY_PASSWORD \
-          --interactive=false
-      - name: upload artefact
-        run:
-          jf rt u "staging/${{ steps.set_package_name.outputs.package_name }}" "identityiq-libs-snapshot/com/jfrog/my-jfrog-app/1.0-SNAPSHOT"
+    uses: ./.github/workflows/reusable.yml
+    with:
+      my_input: 'Hello, World!'
+      runs-on: ubuntu-latest
+   
