@@ -20,10 +20,5 @@ env:
   ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL}}
   ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD}}
   ARTIFACTORY_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME}}
-jobs:
-  build_test:
-    uses: ./.github/workflows/reusable.yml
-    #with:
-      #my_input: 'Hello, World!'
-      #runs-on: 'ubuntu-latest'
+
    
