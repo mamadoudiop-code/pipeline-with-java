@@ -22,7 +22,7 @@ env:
   ARTIFACTORY_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME}}
 
 jobs:
-  build_test:
+  main:
     uses: ./.github/workflows/reusable.yml
     #with:
       #my_input: 'Hello, World!'
