@@ -8,12 +8,7 @@ on:
   pull_request:
     branches: [ "main" ]
   # .github/workflows/callable_workflow.yml
-  workflow_call:
-    inputs:
-      my_input:
-        description: 'A custom string input'
-        required: true
-        type: string
+
 
 
 env:
