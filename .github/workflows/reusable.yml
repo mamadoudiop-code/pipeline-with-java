@@ -19,4 +19,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Show the input
-        run: echo ${{ inputs.my_input }}
+        run: echo ${{ inputs.my_input }} ${{ inputs.run-on }} 
