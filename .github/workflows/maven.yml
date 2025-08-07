@@ -23,4 +23,7 @@ env:
 jobs:
   build_test:
     uses: ./.github/workflows/reusable.yml
+    with:
+      my_input: 'Hello, World!'
+      #runs-on: 'ubuntu-latest'
    
