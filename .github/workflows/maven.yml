@@ -34,5 +34,5 @@ jobs:
     uses: ./.github/workflows/reusable.yml
     with:
       my_input: 'Hello, World!'
-      runs-on: ubuntu-latest
+      runs-on: 'ubuntu-latest'
    
