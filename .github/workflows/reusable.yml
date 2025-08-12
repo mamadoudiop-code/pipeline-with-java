@@ -37,9 +37,12 @@ jobs:
           sleep 5s # Temps nécessaire au démarrage du conteneur
       - name: Vérifier la connexion à SQL Server
         run: |
+          sudo apt-get update && sudo apt-get install -y lsb-release
           curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
           curl https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list
       - name: Update apt and install mssql-tools
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y mssql-tools unixodbc-dev
+          sudo ACCEPT_EULA=Y apt-get install -y mssql-tools18 unixodbc-dev
+      - name: Ajouter les outils au PATH
+        run: echo "::add-path::/opt/mssql-tools18/bin"
