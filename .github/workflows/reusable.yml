@@ -45,4 +45,6 @@ jobs:
           sudo apt-get update -y
           sudo ACCEPT_EULA=Y apt-get install -y mssql-tools18 unixodbc-dev
       - name: Ajouter les outils au PATH
-        run: echo "::add-path::/opt/mssql-tools18/bin"
+        run: |
+          export PATH="$PATH:/opt/mssql-tools18/bin"
+          sqlcmd -S localhost -U sa -P "VotreMotDePasse!" -Q "SELECT @@VERSION"
