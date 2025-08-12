@@ -34,7 +34,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Attendre le démarrage de SQL Server
         run: |
-          sleep 30s # Temps nécessaire au démarrage du conteneur
+          sleep 5s # Temps nécessaire au démarrage du conteneur
       - name: Vérifier la connexion à SQL Server
         run: |
           sudo apt-get update
