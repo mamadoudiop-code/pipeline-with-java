@@ -38,6 +38,6 @@ jobs:
       - name: Vérifier la connexion à SQL Server
         run: |
           sudo apt-get update
-          sudo apt-get install -y mssql-server
+          #sudo apt-get install -y mssql-server
           export PATH="$PATH:/opt/mssql-tools/bin"
           sqlcmd -S localhost -U sa -P "VotreMotDePasse!" -Q "SELECT @@VERSION"
