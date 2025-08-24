@@ -19,6 +19,7 @@ on:
 
 jobs:
   display_input:
+    if: false
     runs-on: ${{ inputs.run-on }}
     services:
       mssql:
