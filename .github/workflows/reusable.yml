@@ -25,6 +25,7 @@ jobs:
         run: echo ${{ inputs.my_input }}
   display_input:
     if: false
+    needs: test
     runs-on: ${{ inputs.run-on }}
     services:
       mssql:
