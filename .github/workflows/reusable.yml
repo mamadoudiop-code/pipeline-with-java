@@ -18,6 +18,16 @@ on:
         default: ubuntu-latest
 
 jobs:
+  test:
+    runs-on: ${{ inputs.run-on }}
+    services:
+      mssql:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          SA_PASSWORD: VotreMotDePasse!  # Remplacez par un mot de passe fort
+          ACCEPT_EULA: 'Y'
+        ports:
+          - 1433:1433
   display_input:
     if: false
     runs-on: ${{ inputs.run-on }}
