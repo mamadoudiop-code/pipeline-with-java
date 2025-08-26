@@ -1,0 +1,11 @@
+name: Lancement manuel
+
+on:
+  workflow_dispatch:
+
+jobs:
+  say-hello:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dire bonjour
+        run: echo "Le workflow a été lancé manuellement. Bonjour !"
