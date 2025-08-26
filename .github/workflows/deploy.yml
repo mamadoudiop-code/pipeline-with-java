@@ -1,0 +1,41 @@
+name: Déploiement manuel avec options
+
+on:
+  workflow_dispatch:
+    inputs:
+      environnement:
+        description: 'Environnement de déploiement'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - 'development'
+          - 'staging'
+          - 'production'
+      message_de_deploiement:
+        description: 'Message de déploiement personnalisé'
+        required: false
+        type: string
+
+jobs:
+  deploy-app:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Afficher les paramètres de déploiement
+        run: |
+          echo "Déploiement vers l'environnement : ${{ github.event.inputs.environnement }}"
+          echo "Message personnalisé : ${{ github.event.inputs.message_de_deploiement }}"
+      
+      - name: Déployer vers l'environnement de production
+        if: github.event.inputs.environnement == 'production'
+        run: |
+          echo "Déploiement en cours..."
+          # Vos commandes de déploiement ici
+          echo "Déploiement vers production terminé !"
+
+      - name: Déployer vers l'environnement de staging ou dev
+        if: github.event.inputs.environnement != 'production'
+        run: |
+          echo "Déploiement vers staging/dev en cours..."
+          # Vos commandes de déploiement ici
+          echo "Déploiement vers staging/dev terminé !"
