@@ -44,7 +44,7 @@ jobs:
       - name: get tags
         id: set_vars
         run: |
-            LAST_TAG=git describe --tags --abbrev=0
+            LAST_TAG=/usr/bin/git describe --tags --abbrev=0
             EXIT_CODE=$?
             if [ $EXIT_CODE -eq 0 ]; then
             # Si la commande réussit, utilisez le tag trouvé
