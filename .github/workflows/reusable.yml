@@ -12,7 +12,7 @@ on:
         type: string
         default: "hello"
       run-on:
-        description: 'A custom input string'
+        description: 'A custom input strinhg'
         required: false
         type: string
         default: ubuntu-latest
