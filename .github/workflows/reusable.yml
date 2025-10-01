@@ -39,7 +39,13 @@ jobs:
         run: echo ${{ inputs.my_input }}
       - uses: actions/checkout@v4
       - name: get tags
-        run: git describe --tags --abbrev=0
+        id: set_vars
+        run: |
+            name = git describe --tags --abbrev=0
+            echo "package_name=$name" >> $GITHUB_OUTPUT
+      - name: latest tag
+        run: |
+           PACKAGE_NAME="${{ steps.set_vars.outputs.package_name }}"
       - name: Attendre le démarrage de SQL Server
         run: |
           sleep 5s # Temps nécessaire au démarrage du conteneur
