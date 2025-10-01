@@ -39,6 +39,8 @@ jobs:
       - name: Show the input
         run: echo ${{ inputs.my_input }}
       - uses: actions/checkout@v4
+      - name: get tags
+        run: git describe --tags --abbrev=0
       - name: Attendre le démarrage de SQL Server
         run: |
           sleep 5s # Temps nécessaire au démarrage du conteneur
