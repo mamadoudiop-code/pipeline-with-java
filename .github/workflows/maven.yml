@@ -5,8 +5,8 @@ name: Java Maven Build & Publis Artifact
 on:
   push:
     branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+  #pull_request:
+    #branches: [ "main" ]
   # .github/workflows/callable_workflow.yml
 
 
