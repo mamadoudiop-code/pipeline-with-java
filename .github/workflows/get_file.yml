@@ -128,11 +128,54 @@ jobs:
     if: needs.search-file.outputs.found == 'true'
 
     steps:
-      - name: 📥 Checkout
-        uses: actions/checkout@v4
+      - name: 📥 Télécharger l'artifact fichier-trouve
+        uses: actions/download-artifact@v4
+        with:
+          name: fichier-trouve
+          path: ./artifacts/fichier-trouve
 
-      - name: ⚙️ Traitement personnalisé
+      - name: 📋 Afficher le fichier depuis l'artifact
         run: |
-          echo "Fichier : ${{ needs.search-file.outputs.first_file }}"
-          echo "Tous les chemins : ${{ needs.search-file.outputs.file_paths }}"
-          # Ta logique ici
+          FIRST_FILE="${{ needs.search-file.outputs.first_file }}"
+          # Récupère uniquement le nom du fichier (sans le chemin d'origine)
+          FILENAME=$(basename "$FIRST_FILE")
+          ARTIFACT_FILE="./artifacts/fichier-trouve/$FILENAME"
+
+          echo "=================================================="
+          echo "📄 Fichier : $FIRST_FILE"
+          echo "📦 Récupéré depuis l'artifact : $ARTIFACT_FILE"
+          echo "=================================================="
+
+          if [ -f "$ARTIFACT_FILE" ]; then
+            echo "📁 Taille   : $(du -sh "$ARTIFACT_FILE" | cut -f1)"
+            echo "🕐 Modifié  : $(date -r "$ARTIFACT_FILE" '+%Y-%m-%d %H:%M:%S')"
+            echo ""
+            echo "--- Contenu ---"
+            cat "$ARTIFACT_FILE"
+            echo "--- Fin ---"
+          else
+            echo "⚠️  Fichier introuvable dans l'artifact : $ARTIFACT_FILE"
+            echo "📂 Contenu du dossier artifact :"
+            ls -la ./artifacts/fichier-trouve/
+          fi
+
+      - name: 📤 Contenu fichier → Step Summary
+        if: always()
+        run: |
+          FIRST_FILE="${{ needs.search-file.outputs.first_file }}"
+          FILENAME=$(basename "$FIRST_FILE")
+          ARTIFACT_FILE="./artifacts/fichier-trouve/$FILENAME"
+
+          echo "## 📦 Fichier trouvé — \`$FIRST_FILE\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ -f "$ARTIFACT_FILE" ]; then
+            echo "- 📁 **Taille** : $(du -sh "$ARTIFACT_FILE" | cut -f1)" >> "$GITHUB_STEP_SUMMARY"
+            echo "- 🕐 **Modifié** : $(date -r "$ARTIFACT_FILE" '+%Y-%m-%d %H:%M:%S')" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            cat "$ARTIFACT_FILE" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "⚠️ Fichier introuvable dans l'artifact." >> "$GITHUB_STEP_SUMMARY"
+          fi
