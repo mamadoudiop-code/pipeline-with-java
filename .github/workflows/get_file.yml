@@ -110,7 +110,7 @@ jobs:
 
       - name: 📋 Afficher le contenu du fichier trouvé
         if: steps.search.outputs.found == 'true'
-        run: cat "${{ steps.search.outputs.first_file }}"
+        run: cat "${{ steps.search.outputs.FILE_PATHS }}"
 
       - name: 📦 Upload comme artifact
         if: steps.search.outputs.found == 'true'
