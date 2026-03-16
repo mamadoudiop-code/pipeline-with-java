@@ -35,7 +35,9 @@ jobs:
         id: search
         run: |
           set -x
-          SEARCH_ROOT="/home/runner/work/${{ github.repository }}/src"
+          ls -l
+          pwd
+          SEARCH_ROOT="/home/runner/work/${{ github.repository }}"
           FILE_PATTERN="${{ github.event.inputs.file_pattern }}"
           FAIL_IF_NOT_FOUND="${{ github.event.inputs.fail_if_not_found }}"
 
