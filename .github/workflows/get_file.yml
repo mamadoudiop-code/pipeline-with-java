@@ -38,7 +38,7 @@ jobs:
       - name: 🔍 Recherche récursive
         id: search
         run: |
-          SEARCH_ROOT="/home/runner/work/${{ github.repository }}/${{ github.repository }}/src"
+          SEARCH_ROOT="/home/runner/work/${{ github.repository }}/src"
           FILE_PATTERN="${{ github.event.inputs.file_pattern }}"
           FAIL_IF_NOT_FOUND="${{ github.event.inputs.fail_if_not_found }}"
 
