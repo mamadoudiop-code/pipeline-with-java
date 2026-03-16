@@ -3,10 +3,6 @@ name: 🔍 Search File in Directory Tree
 on:
   workflow_dispatch:
     inputs:
-      search_root:
-        description: 'Dossier racine de la recherche (ex: artifacts/)'
-        required: true
-        default: '.'
       file_pattern:
         description: 'Nom ou pattern du fichier (ex: config.xml ou *.xml)'
         required: true
@@ -38,6 +34,7 @@ jobs:
       - name: 🔍 Recherche récursive
         id: search
         run: |
+          set -x
           SEARCH_ROOT="/home/runner/work/${{ github.repository }}/src"
           FILE_PATTERN="${{ github.event.inputs.file_pattern }}"
           FAIL_IF_NOT_FOUND="${{ github.event.inputs.fail_if_not_found }}"
