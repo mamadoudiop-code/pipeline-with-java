@@ -35,8 +35,6 @@ jobs:
         id: search
         run: |
           set -x
-          ls -l /home/runner/work/pipeline-with-java/pipeline-with-java
-          pwd
           SEARCH_ROOT="/home/runner/work/pipeline-with-java/pipeline-with-java"
           RAW_PATTERNS="${{ github.event.inputs.file_pattern }}"
           FAIL_IF_NOT_FOUND="${{ github.event.inputs.fail_if_not_found }}"
@@ -51,13 +49,10 @@ jobs:
           log "🔎 Pattern(s)     : $RAW_PATTERNS"
           log "---"
 
-          # Découpage de la liste de patterns (séparateur : virgule)
           IFS=',' read -ra PATTERNS <<< "$RAW_PATTERNS"
-
           ALL_FOUND_FILES=""
 
           for PATTERN in "${PATTERNS[@]}"; do
-            # Supprime les espaces éventuels autour du pattern
             PATTERN=$(echo "$PATTERN" | xargs)
             log "🔍 Recherche du pattern : [ $PATTERN ]"
 
@@ -69,14 +64,13 @@ jobs:
               COUNT=$(echo "$FOUND" | wc -l | tr -d ' ')
               log "   ✅ $COUNT fichier(s) trouvé(s) pour [ $PATTERN ] :"
               echo "$FOUND" | while read -r f; do log "      → $f"; done
-              # Agrège les résultats
               ALL_FOUND_FILES=$(printf "%s\n%s" "$ALL_FOUND_FILES" "$FOUND" | sed '/^$/d')
             fi
 
             log "---"
           done
 
-          # Dédoublonnage au cas où un fichier matcherait plusieurs patterns
+          # Dédoublonnage
           ALL_FOUND_FILES=$(echo "$ALL_FOUND_FILES" | sort -u | sed '/^$/d')
 
           if [ -z "$ALL_FOUND_FILES" ]; then
@@ -94,15 +88,25 @@ jobs:
           else
             TOTAL=$(echo "$ALL_FOUND_FILES" | wc -l | tr -d ' ')
             FIRST_FILE=$(echo "$ALL_FOUND_FILES" | head -n 1)
+
+            # ✅ Bug 1 corrigé — construit depuis ALL_FOUND_FILES
             FILE_PATHS=$(echo "$ALL_FOUND_FILES" | paste -sd ',' -)
 
             log "📊 Total fichiers trouvés (tous patterns confondus) : $TOTAL"
             log "📄 Premier fichier : $FIRST_FILE"
+            log "📄 Tous les fichiers : $FILE_PATHS"
 
             echo "found=true"             >> "$GITHUB_OUTPUT"
             echo "file_count=$TOTAL"      >> "$GITHUB_OUTPUT"
             echo "file_paths=$FILE_PATHS" >> "$GITHUB_OUTPUT"
             echo "first_file=$FIRST_FILE" >> "$GITHUB_OUTPUT"
+
+            # ✅ Bug 2 corrigé — format multiligne pour upload-artifact
+            {
+              echo "file_paths_newline<<EOF"
+              echo "$ALL_FOUND_FILES"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
           fi
 
           log "🕐 Fin de la recherche : $(date '+%Y-%m-%d %H:%M:%S')"
@@ -110,14 +114,34 @@ jobs:
 
       - name: 📋 Afficher le contenu du fichier trouvé
         if: steps.search.outputs.found == 'true'
-        run: cat "${{ steps.search.outputs.FILE_PATHS }}"
+        run: |
+          FILE_PATHS="${{ steps.search.outputs.file_paths }}"
+          FILE_COUNT="${{ steps.search.outputs.file_count }}"
 
-      - name: 📦 Upload comme artifact
+          echo "📊 Nombre de fichiers : $FILE_COUNT"
+          echo "=================================================="
+
+          IFS=',' read -ra FILES <<< "$FILE_PATHS"
+
+          INDEX=1
+          for FILE in "${FILES[@]}"; do
+            FILE=$(echo "$FILE" | xargs)
+            echo ""
+            echo "📄 [$INDEX/$FILE_COUNT] $FILE"
+            echo "--------------------------------------------------"
+            cat "$FILE"
+            echo ""
+            echo "=================================================="
+            INDEX=$((INDEX + 1))
+          done
+
+      - name: 📦 Upload fichiers trouvés comme artifact
         if: steps.search.outputs.found == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: fichier-trouve
-          path: ${{ steps.search.outputs.FILE_PATHS }}
+          path: |
+            ${{ steps.search.outputs.file_paths_newline }}
           retention-days: 7
 
   # Job suivant qui consomme les outputs
