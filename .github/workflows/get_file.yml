@@ -1,0 +1,101 @@
+name: 🔍 Search File in Directory Tree
+
+on:
+  workflow_dispatch:
+    inputs:
+      search_root:
+        description: 'Dossier racine de la recherche (ex: artifacts/)'
+        required: true
+        default: '.'
+      file_pattern:
+        description: 'Nom ou pattern du fichier (ex: config.xml ou *.xml)'
+        required: true
+        default: '*.xml'
+      fail_if_not_found:
+        description: 'Échouer si aucun fichier trouvé ?'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+jobs:
+  search-file:
+    name: Search for file
+    runs-on: ubuntu-latest
+
+    outputs:
+      found:      ${{ steps.search.outputs.found }}
+      file_count: ${{ steps.search.outputs.file_count }}
+      file_paths: ${{ steps.search.outputs.file_paths }}
+      first_file: ${{ steps.search.outputs.first_file }}
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🔍 Recherche récursive
+        id: search
+        run: |
+          SEARCH_ROOT="/home/runner/work/${{ github.repository }}/${{ github.repository }}/src"
+          FILE_PATTERN="${{ github.event.inputs.file_pattern }}"
+          FAIL_IF_NOT_FOUND="${{ github.event.inputs.fail_if_not_found }}"
+
+          echo "📂 Recherche de [ $FILE_PATTERN ] dans [ $SEARCH_ROOT ] ..."
+
+          FOUND_FILES=$(find "$SEARCH_ROOT" -type f -name "$FILE_PATTERN" 2>/dev/null)
+
+          if [ -z "$FOUND_FILES" ]; then
+            echo "⚠️  Aucun fichier trouvé."
+            echo "found=false"  >> "$GITHUB_OUTPUT"
+            echo "file_count=0" >> "$GITHUB_OUTPUT"
+            echo "file_paths="  >> "$GITHUB_OUTPUT"
+            echo "first_file="  >> "$GITHUB_OUTPUT"
+
+            if [ "$FAIL_IF_NOT_FOUND" = "true" ]; then
+              echo "::error::Fichier introuvable — arrêt du workflow."
+              exit 1
+            fi
+          else
+            FILE_COUNT=$(echo "$FOUND_FILES" | wc -l | tr -d ' ')
+            echo "✅ $FILE_COUNT fichier(s) trouvé(s) :"
+            echo "$FOUND_FILES" | while read -r f; do echo "   → $f"; done
+
+            FIRST_FILE=$(echo "$FOUND_FILES" | head -n 1)
+            FILE_PATHS=$(echo "$FOUND_FILES" | paste -sd ',' -)
+
+            echo "found=true"              >> "$GITHUB_OUTPUT"
+            echo "file_count=$FILE_COUNT"  >> "$GITHUB_OUTPUT"
+            echo "file_paths=$FILE_PATHS"  >> "$GITHUB_OUTPUT"
+            echo "first_file=$FIRST_FILE"  >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 📋 Afficher le contenu du fichier trouvé
+        if: steps.search.outputs.found == 'true'
+        run: cat "${{ steps.search.outputs.first_file }}"
+
+      - name: 📦 Upload comme artifact
+        if: steps.search.outputs.found == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: fichier-trouve
+          path: ${{ steps.search.outputs.first_file }}
+          retention-days: 7
+
+  # Job suivant qui consomme les outputs
+  process-file:
+    name: Process found file
+    runs-on: ubuntu-latest
+    needs: search-file
+    if: needs.search-file.outputs.found == 'true'
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Traitement personnalisé
+        run: |
+          echo "Fichier : ${{ needs.search-file.outputs.first_file }}"
+          echo "Tous les chemins : ${{ needs.search-file.outputs.file_paths }}"
+          # Ta logique ici
