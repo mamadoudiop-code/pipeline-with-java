@@ -38,37 +38,75 @@ jobs:
           ls -l /home/runner/work/pipeline-with-java/pipeline-with-java
           pwd
           SEARCH_ROOT="/home/runner/work/pipeline-with-java/pipeline-with-java"
-          FILE_PATTERN="${{ github.event.inputs.file_pattern }}"
+          RAW_PATTERNS="${{ github.event.inputs.file_pattern }}"
           FAIL_IF_NOT_FOUND="${{ github.event.inputs.fail_if_not_found }}"
+          LOG_FILE="search_results.log"
 
-          echo "📂 Recherche de [ $FILE_PATTERN ] dans [ $SEARCH_ROOT ] ..."
+          log() {
+            echo "$1" | tee -a "$LOG_FILE"
+          }
 
-          FOUND_FILES=$(find "$SEARCH_ROOT" -type f -name "$FILE_PATTERN" 2>/dev/null)
+          log "🕐 Début de la recherche : $(date '+%Y-%m-%d %H:%M:%S')"
+          log "📂 Dossier racine : $SEARCH_ROOT"
+          log "🔎 Pattern(s)     : $RAW_PATTERNS"
+          log "---"
 
-          if [ -z "$FOUND_FILES" ]; then
-            echo "⚠️  Aucun fichier trouvé."
+          # Découpage de la liste de patterns (séparateur : virgule)
+          IFS=',' read -ra PATTERNS <<< "$RAW_PATTERNS"
+
+          ALL_FOUND_FILES=""
+
+          for PATTERN in "${PATTERNS[@]}"; do
+            # Supprime les espaces éventuels autour du pattern
+            PATTERN=$(echo "$PATTERN" | xargs)
+            log "🔍 Recherche du pattern : [ $PATTERN ]"
+
+            FOUND=$(find "$SEARCH_ROOT" -type f -name "$PATTERN" 2>/dev/null)
+
+            if [ -z "$FOUND" ]; then
+              log "   ⚠️  Aucun fichier trouvé pour [ $PATTERN ]"
+            else
+              COUNT=$(echo "$FOUND" | wc -l | tr -d ' ')
+              log "   ✅ $COUNT fichier(s) trouvé(s) pour [ $PATTERN ] :"
+              echo "$FOUND" | while read -r f; do log "      → $f"; done
+              # Agrège les résultats
+              ALL_FOUND_FILES=$(printf "%s\n%s" "$ALL_FOUND_FILES" "$FOUND" | sed '/^$/d')
+            fi
+
+            log "---"
+          done
+
+          # Dédoublonnage au cas où un fichier matcherait plusieurs patterns
+          ALL_FOUND_FILES=$(echo "$ALL_FOUND_FILES" | sort -u | sed '/^$/d')
+
+          if [ -z "$ALL_FOUND_FILES" ]; then
+            log "❌ Aucun fichier trouvé pour l'ensemble des patterns."
             echo "found=false"  >> "$GITHUB_OUTPUT"
             echo "file_count=0" >> "$GITHUB_OUTPUT"
             echo "file_paths="  >> "$GITHUB_OUTPUT"
             echo "first_file="  >> "$GITHUB_OUTPUT"
 
             if [ "$FAIL_IF_NOT_FOUND" = "true" ]; then
-              echo "::error::Fichier introuvable — arrêt du workflow."
+              echo "::error::Aucun fichier trouvé — arrêt du workflow."
+              log "🕐 Fin de la recherche : $(date '+%Y-%m-%d %H:%M:%S')"
               exit 1
             fi
           else
-            FILE_COUNT=$(echo "$FOUND_FILES" | wc -l | tr -d ' ')
-            echo "✅ $FILE_COUNT fichier(s) trouvé(s) :"
-            echo "$FOUND_FILES" | while read -r f; do echo "   → $f"; done
+            TOTAL=$(echo "$ALL_FOUND_FILES" | wc -l | tr -d ' ')
+            FIRST_FILE=$(echo "$ALL_FOUND_FILES" | head -n 1)
+            FILE_PATHS=$(echo "$ALL_FOUND_FILES" | paste -sd ',' -)
 
-            FIRST_FILE=$(echo "$FOUND_FILES" | head -n 1)
-            FILE_PATHS=$(echo "$FOUND_FILES" | paste -sd ',' -)
+            log "📊 Total fichiers trouvés (tous patterns confondus) : $TOTAL"
+            log "📄 Premier fichier : $FIRST_FILE"
 
-            echo "found=true"              >> "$GITHUB_OUTPUT"
-            echo "file_count=$FILE_COUNT"  >> "$GITHUB_OUTPUT"
-            echo "file_paths=$FILE_PATHS"  >> "$GITHUB_OUTPUT"
-            echo "first_file=$FIRST_FILE"  >> "$GITHUB_OUTPUT"
+            echo "found=true"             >> "$GITHUB_OUTPUT"
+            echo "file_count=$TOTAL"      >> "$GITHUB_OUTPUT"
+            echo "file_paths=$FILE_PATHS" >> "$GITHUB_OUTPUT"
+            echo "first_file=$FIRST_FILE" >> "$GITHUB_OUTPUT"
           fi
+
+          log "🕐 Fin de la recherche : $(date '+%Y-%m-%d %H:%M:%S')"
+          echo "log_file=$LOG_FILE" >> "$GITHUB_OUTPUT"
 
       - name: 📋 Afficher le contenu du fichier trouvé
         if: steps.search.outputs.found == 'true'
