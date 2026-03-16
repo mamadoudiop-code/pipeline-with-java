@@ -35,9 +35,9 @@ jobs:
         id: search
         run: |
           set -x
-          ls -l
+          ls -l /home/runner/work/pipeline-with-java/pipeline-with-java
           pwd
-          SEARCH_ROOT="/home/runner/work/${{ github.repository }}"
+          SEARCH_ROOT="/home/runner/work/pipeline-with-java/pipeline-with-java"
           FILE_PATTERN="${{ github.event.inputs.file_pattern }}"
           FAIL_IF_NOT_FOUND="${{ github.event.inputs.fail_if_not_found }}"
 
