@@ -160,46 +160,73 @@ jobs:
 
       - name: 📋 Afficher le fichier depuis l'artifact
         run: |
-          FIRST_FILE="${{ needs.search-file.outputs.first_file }}"
-          # Récupère uniquement le nom du fichier (sans le chemin d'origine)
-          FILENAME=$(basename "$FIRST_FILE")
-          ARTIFACT_FILE="./artifacts/fichier-trouve/$FILENAME"
+          FILE_PATHS="${{ needs.search-file.outputs.file_paths }}"
+          FILE_COUNT="${{ needs.search-file.outputs.file_count }}"
 
-          echo "=================================================="
-          echo "📄 Fichier : $FIRST_FILE"
-          echo "📦 Récupéré depuis l'artifact : $ARTIFACT_FILE"
+          echo "📊 Nombre de fichiers : $FILE_COUNT"
           echo "=================================================="
 
-          if [ -f "$ARTIFACT_FILE" ]; then
-            echo "📁 Taille   : $(du -sh "$ARTIFACT_FILE" | cut -f1)"
-            echo "🕐 Modifié  : $(date -r "$ARTIFACT_FILE" '+%Y-%m-%d %H:%M:%S')"
+          IFS=',' read -ra FILES <<< "$FILE_PATHS"
+
+          INDEX=1
+          for FILE in "${FILES[@]}"; do
+            FILE=$(echo "$FILE" | xargs)
+            FILENAME=$(basename "$FILE")
+            ARTIFACT_FILE="./artifacts/fichier-trouve/$FILENAME"
+
             echo ""
-            echo "--- Contenu ---"
-            cat "$ARTIFACT_FILE"
-            echo "--- Fin ---"
-          else
-            echo "⚠️  Fichier introuvable dans l'artifact : $ARTIFACT_FILE"
-            echo "📂 Contenu du dossier artifact :"
-            ls -la ./artifacts/fichier-trouve/
-          fi
+            echo "📄 [$INDEX/$FILE_COUNT] Fichier original : $FILE"
+            echo "📦 Depuis l'artifact : $ARTIFACT_FILE"
+            echo "--------------------------------------------------"
 
-      - name: 📤 Contenu fichier → Step Summary
+            if [ -f "$ARTIFACT_FILE" ]; then
+              echo "📁 Taille   : $(du -sh "$ARTIFACT_FILE" | cut -f1)"
+              echo "🕐 Modifié  : $(date -r "$ARTIFACT_FILE" '+%Y-%m-%d %H:%M:%S')"
+              echo ""
+              echo "--- Contenu ---"
+              cat "$ARTIFACT_FILE"
+              echo "--- Fin ---"
+            else
+              echo "⚠️  Fichier introuvable dans l'artifact : $ARTIFACT_FILE"
+              echo "📂 Contenu du dossier artifact :"
+              ls -la ./artifacts/fichier-trouve/
+            fi
+
+            echo "=================================================="
+            INDEX=$((INDEX + 1))
+          done
+
+      - name: 📤 Contenu fichiers → Step Summary
         if: always()
         run: |
-          FIRST_FILE="${{ needs.search-file.outputs.first_file }}"
-          FILENAME=$(basename "$FIRST_FILE")
-          ARTIFACT_FILE="./artifacts/fichier-trouve/$FILENAME"
+          FILE_PATHS="${{ needs.search-file.outputs.file_paths }}"
+          FILE_COUNT="${{ needs.search-file.outputs.file_count }}"
 
-          echo "## 📦 Fichier trouvé — \`$FIRST_FILE\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "## 📦 Fichiers trouvés ($FILE_COUNT)" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
 
-          if [ -f "$ARTIFACT_FILE" ]; then
-            echo "- 📁 **Taille** : $(du -sh "$ARTIFACT_FILE" | cut -f1)" >> "$GITHUB_STEP_SUMMARY"
-            echo "- 🕐 **Modifié** : $(date -r "$ARTIFACT_FILE" '+%Y-%m-%d %H:%M:%S')" >> "$GITHUB_STEP_SUMMARY"
+          IFS=',' read -ra FILES <<< "$FILE_PATHS"
+
+          INDEX=1
+          for FILE in "${FILES[@]}"; do
+            FILE=$(echo "$FILE" | xargs)
+            FILENAME=$(basename "$FILE")
+            ARTIFACT_FILE="./artifacts/fichier-trouve/$FILENAME"
+
+            echo "### [$INDEX/$FILE_COUNT] \`$FILE\`" >> "$GITHUB_STEP_SUMMARY"
             echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo '```' >> "$GITHUB_STEP_SUMMARY"
-            cat "$ARTIFACT_FILE" >> "$GITHUB_STEP_SUMMARY"
-            echo '```' >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "⚠️ Fichier introuvable dans l'artifact." >> "$GITHUB_STEP_SUMMARY"
-          fi
+
+            if [ -f "$ARTIFACT_FILE" ]; then
+              echo "- 📁 **Taille** : $(du -sh "$ARTIFACT_FILE" | cut -f1)" >> "$GITHUB_STEP_SUMMARY"
+              echo "- 🕐 **Modifié** : $(date -r "$ARTIFACT_FILE" '+%Y-%m-%d %H:%M:%S')" >> "$GITHUB_STEP_SUMMARY"
+              echo "" >> "$GITHUB_STEP_SUMMARY"
+              echo '```' >> "$GITHUB_STEP_SUMMARY"
+              cat "$ARTIFACT_FILE" >> "$GITHUB_STEP_SUMMARY"
+              echo '```' >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "⚠️ Fichier introuvable dans l'artifact." >> "$GITHUB_STEP_SUMMARY"
+            fi
+
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            INDEX=$((INDEX + 1))
+          done
