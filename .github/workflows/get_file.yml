@@ -162,37 +162,56 @@ jobs:
         run: |
           FILE_PATHS="${{ needs.search-file.outputs.file_paths }}"
           FILE_COUNT="${{ needs.search-file.outputs.file_count }}"
+          FLAT_DIR="./flat-files"
+          mkdir -p "$FLAT_DIR"
 
           echo "📊 Nombre de fichiers : $FILE_COUNT"
           echo "=================================================="
 
           IFS=',' read -ra FILES <<< "$FILE_PATHS"
-
           INDEX=1
+          declare -A SEEN_NAMES
+
           for FILE in "${FILES[@]}"; do
             FILE=$(echo "$FILE" | xargs)
-            # Chemin relatif conservé dans l'artifact (ex: subdir/fichier.xml)
             ARTIFACT_FILE="./artifacts/fichier-trouve/${FILE}"
+            FILENAME=$(basename "$FILE")
+      
             echo ""
             echo "📄 [$INDEX/$FILE_COUNT] Fichier original : $FILE"
-            echo "📦 Depuis l'artifact   : $ARTIFACT_FILE"
             echo "--------------------------------------------------"
+    
             if [ -f "$ARTIFACT_FILE" ]; then
-              echo "📁 Taille   : $(du -sh "$ARTIFACT_FILE" | cut -f1)"
-              echo "🕐 Modifié  : $(date -r "$ARTIFACT_FILE" '+%Y-%m-%d %H:%M:%S')"
+              # Préfixer si nom dupliqué
+              if [ -n "${SEEN_NAMES[$FILENAME]+_}" ]; then
+                PREFIX=$(echo "$FILE" | tr '/' '__' | sed "s/__${FILENAME}$//")
+                FLAT_NAME="${PREFIX}__${FILENAME}"
+              else
+                FLAT_NAME="$FILENAME"
+                SEEN_NAMES[$FILENAME]=1
+              fi
+      
+              cp "$ARTIFACT_FILE" "$FLAT_DIR/$FLAT_NAME"
+
+              echo "📦 Copié vers         : $FLAT_DIR/$FLAT_NAME"
+              echo "📁 Taille             : $(du -sh "$ARTIFACT_FILE" | cut -f1)"
+              echo "🕐 Modifié            : $(date -r "$ARTIFACT_FILE" '+%Y-%m-%d %H:%M:%S')"
               echo ""
               echo "--- Contenu ---"
               cat "$ARTIFACT_FILE"
               echo "--- Fin ---"
-            else
-              echo "⚠️  Fichier introuvable : $ARTIFACT_FILE"
-              echo "📂 Arborescence de l'artifact :"
-              find ./artifacts/fichier-trouve/ -type f | sort
-            fi
-            echo "=================================================="
-            INDEX=$((INDEX + 1))
-          done
-
+          else
+            echo "⚠️  Fichier introuvable : $ARTIFACT_FILE"
+            echo "📂 Arborescence de l'artifact :"
+            find ./artifacts/fichier-trouve/ -type f | sort
+          fi
+  
+          echo "=================================================="
+          INDEX=$((INDEX + 1))
+       done
+       echo ""
+       echo "📂 Contenu final de $FLAT_DIR :"
+       ls -lh "$FLAT_DIR"
       - name: 📤 Contenu fichiers → Step Summary
         if: always()
         run: |
