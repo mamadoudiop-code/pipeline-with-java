@@ -171,14 +171,12 @@ jobs:
           INDEX=1
           for FILE in "${FILES[@]}"; do
             FILE=$(echo "$FILE" | xargs)
-            FILENAME=$(basename "$FILE")
-            ARTIFACT_FILE="./artifacts/fichier-trouve/$FILENAME"
-
+            # Chemin relatif conservé dans l'artifact (ex: subdir/fichier.xml)
+            ARTIFACT_FILE="./artifacts/fichier-trouve/${FILE}"
             echo ""
             echo "📄 [$INDEX/$FILE_COUNT] Fichier original : $FILE"
-            echo "📦 Depuis l'artifact : $ARTIFACT_FILE"
+            echo "📦 Depuis l'artifact   : $ARTIFACT_FILE"
             echo "--------------------------------------------------"
-
             if [ -f "$ARTIFACT_FILE" ]; then
               echo "📁 Taille   : $(du -sh "$ARTIFACT_FILE" | cut -f1)"
               echo "🕐 Modifié  : $(date -r "$ARTIFACT_FILE" '+%Y-%m-%d %H:%M:%S')"
@@ -187,11 +185,10 @@ jobs:
               cat "$ARTIFACT_FILE"
               echo "--- Fin ---"
             else
-              echo "⚠️  Fichier introuvable dans l'artifact : $ARTIFACT_FILE"
-              echo "📂 Contenu du dossier artifact :"
-              ls -la ./artifacts/fichier-trouve/
+              echo "⚠️  Fichier introuvable : $ARTIFACT_FILE"
+              echo "📂 Arborescence de l'artifact :"
+              find ./artifacts/fichier-trouve/ -type f | sort
             fi
-
             echo "=================================================="
             INDEX=$((INDEX + 1))
           done
