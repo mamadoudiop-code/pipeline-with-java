@@ -195,6 +195,13 @@ jobs:
           done < <(ls "$FLAT_DIR" | grep -v '^index\.txt$') > "$FLAT_DIR/index.txt"
           echo "✅ index.txt créé :"
           cat "$FLAT_DIR/index.txt"
+      - name: 📋 Afficher les imports dans le summary
+        run: |
+          echo "## 📋 contenu du dossier final à transférer dans le serveur" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          ls -la ./flat-files/ >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
       - name: 📤 Contenu fichiers → Step Summary
         if: always()
         run: |
