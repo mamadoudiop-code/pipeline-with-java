@@ -198,34 +198,8 @@ jobs:
       - name: 📤 Contenu fichiers → Step Summary
         if: always()
         run: |
-          FILE_PATHS="${{ needs.search-file.outputs.file_paths }}"
-          FILE_COUNT="${{ needs.search-file.outputs.file_count }}"
-
-          echo "## 📦 Fichiers trouvés ($FILE_COUNT)" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-
-          IFS=',' read -ra FILES <<< "$FILE_PATHS"
-
-          INDEX=1
-          for FILE in "${FILES[@]}"; do
-            FILE=$(echo "$FILE" | xargs)
-            FILENAME=$(basename "$FILE")
-            ARTIFACT_FILE="./artifacts/fichier-trouve/$FILENAME"
-
-            echo "### [$INDEX/$FILE_COUNT] \`$FILE\`" >> "$GITHUB_STEP_SUMMARY"
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-
-            if [ -f "$ARTIFACT_FILE" ]; then
-              echo "- 📁 **Taille** : $(du -sh "$ARTIFACT_FILE" | cut -f1)" >> "$GITHUB_STEP_SUMMARY"
-              echo "- 🕐 **Modifié** : $(date -r "$ARTIFACT_FILE" '+%Y-%m-%d %H:%M:%S')" >> "$GITHUB_STEP_SUMMARY"
-              echo "" >> "$GITHUB_STEP_SUMMARY"
-              echo '```' >> "$GITHUB_STEP_SUMMARY"
-              cat "$ARTIFACT_FILE" >> "$GITHUB_STEP_SUMMARY"
-              echo '```' >> "$GITHUB_STEP_SUMMARY"
-            else
-              echo "⚠️ Fichier introuvable dans l'artifact." >> "$GITHUB_STEP_SUMMARY"
-            fi
-
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-            INDEX=$((INDEX + 1))
-          done
+          echo "## 📋 Imports à effectuer" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat ./flat-files/index.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
