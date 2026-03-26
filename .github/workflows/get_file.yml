@@ -160,55 +160,30 @@ jobs:
 
       - name: 📋 Afficher les fichiers depuis l'artifact
         run: |
-          FILE_PATHS="${{ needs.search-file.outputs.file_paths }}"
-          FILE_COUNT="${{ needs.search-file.outputs.file_count }}"
           FLAT_DIR="./flat-files"
           mkdir -p "$FLAT_DIR"
-      
-          echo "📊 Nombre de fichiers : $FILE_COUNT"
-          echo "=================================================="
-      
-          IFS=',' read -ra FILES <<< "$FILE_PATHS"
-          INDEX=1
           declare -A SEEN_NAMES
       
-          for FILE in "${FILES[@]}"; do
-            FILE=$(echo "$FILE" | xargs)
-            ARTIFACT_FILE="./artifacts/fichier-trouve/${FILE}"
-            FILENAME=$(basename "$FILE")
+          echo "📂 Arborescence de l'artifact :"
+          find ./artifacts/fichier-trouve/ -type f | sort
+          echo "=================================================="
       
-            echo ""
-            echo "📄 [$INDEX/$FILE_COUNT] Fichier original : $FILE"
-            echo "--------------------------------------------------"
+          while IFS= read -r ARTIFACT_FILE; do
+            FILENAME=$(basename "$ARTIFACT_FILE")
       
-            if [ -f "$ARTIFACT_FILE" ]; then
-              # Préfixer si nom dupliqué
-              if [ -n "${SEEN_NAMES[$FILENAME]+_}" ]; then
-                PREFIX=$(echo "$FILE" | tr '/' '__' | sed "s/__${FILENAME}$//")
-                FLAT_NAME="${PREFIX}__${FILENAME}"
-              else
-                FLAT_NAME="$FILENAME"
-                SEEN_NAMES[$FILENAME]=1
-              fi
-      
-              cp "$ARTIFACT_FILE" "$FLAT_DIR/$FLAT_NAME"
-      
-              echo "📦 Copié vers         : $FLAT_DIR/$FLAT_NAME"
-              echo "📁 Taille             : $(du -sh "$ARTIFACT_FILE" | cut -f1)"
-              echo "🕐 Modifié            : $(date -r "$ARTIFACT_FILE" '+%Y-%m-%d %H:%M:%S')"
-              echo ""
-              echo "--- Contenu ---"
-              cat "$ARTIFACT_FILE"
-              echo "--- Fin ---"
+            # Préfixer avec le chemin si nom dupliqué
+            if [ -n "${SEEN_NAMES[$FILENAME]+_}" ]; then
+              DIRNAME=$(dirname "$ARTIFACT_FILE" | tr '/' '__')
+              FLAT_NAME="${DIRNAME}__${FILENAME}"
             else
-              echo "⚠️  Fichier introuvable : $ARTIFACT_FILE"
-              echo "📂 Arborescence de l'artifact :"
-              find ./artifacts/fichier-trouve/ -type f | sort
+              FLAT_NAME="$FILENAME"
+              SEEN_NAMES[$FILENAME]=1
             fi
       
-            echo "=================================================="
-            INDEX=$((INDEX + 1))
-          done
+            cp "$ARTIFACT_FILE" "$FLAT_DIR/$FLAT_NAME"
+            echo "✅ $ARTIFACT_FILE → $FLAT_DIR/$FLAT_NAME"
+      
+          done < <(find ./artifacts/fichier-trouve/ -type f | sort)
       
           echo ""
           echo "📂 Contenu final de $FLAT_DIR :"
