@@ -188,6 +188,13 @@ jobs:
           echo ""
           echo "📂 Contenu final de $FLAT_DIR :"
           ls -lh "$FLAT_DIR"
+          echo ""
+          echo "📝 Création du fichier index..."
+          while IFS= read -r FLAT_FILE; do
+            echo "import -c \"$FLAT_FILE\""
+          done < <(ls "$FLAT_DIR") > "$FLAT_DIR/index.txt"
+          echo "✅ index.txt créé :"
+          cat "$FLAT_DIR/index.txt"
       - name: 📤 Contenu fichiers → Step Summary
         if: always()
         run: |
