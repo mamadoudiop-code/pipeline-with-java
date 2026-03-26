@@ -198,7 +198,7 @@ jobs:
       - name: 📤 Contenu fichiers → Step Summary
         if: always()
         run: |
-          echo "## 📋 Imports à effectuer" >> $GITHUB_STEP_SUMMARY
+          echo "## 📋 Imports à effectuer dans le serveur" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           cat ./flat-files/index.txt >> $GITHUB_STEP_SUMMARY
