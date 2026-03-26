@@ -200,7 +200,7 @@ jobs:
           echo "## 📋 contenu du dossier final à transférer dans le serveur" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          ls -la ./flat-files/ >> $GITHUB_STEP_SUMMARY
+          ls ./flat-files/ >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
       - name: 📤 Contenu fichiers → Step Summary
         if: always()
