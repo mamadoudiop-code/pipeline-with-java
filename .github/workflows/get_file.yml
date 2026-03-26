@@ -203,6 +203,13 @@ jobs:
           echo ""
           echo "📂 Contenu de l'archive :"
           tar -tzf flat-files.tar.gz
+      - name: 📋 Contenu du tar
+        run: |
+          echo "## 📋 contenu du tar final à transférer dans le serveur" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          tar -tzf flat-files.tar.gz >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
       - name: 📋 Afficher les imports dans le summary
         run: |
           echo "## 📋 contenu du dossier final à transférer dans le serveur" >> $GITHUB_STEP_SUMMARY
