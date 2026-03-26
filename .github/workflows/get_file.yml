@@ -192,7 +192,7 @@ jobs:
           echo "📝 Création du fichier index..."
           while IFS= read -r FLAT_FILE; do
             echo "import -c \"$FLAT_FILE\""
-          done < <(ls "$FLAT_DIR") > "$FLAT_DIR/index.txt"
+          done < <(ls "$FLAT_DIR" | grep -v '^index\.txt$') > "$FLAT_DIR/index.txt"
           echo "✅ index.txt créé :"
           cat "$FLAT_DIR/index.txt"
       - name: 📤 Contenu fichiers → Step Summary
