@@ -195,6 +195,14 @@ jobs:
           done < <(ls "$FLAT_DIR" | grep -v '^index\.txt$') > "$FLAT_DIR/index.txt"
           echo "✅ index.txt créé :"
           cat "$FLAT_DIR/index.txt"
+      - name: 📦 Créer l'archive tar du dossier flat-files
+        run: |
+          tar -czf flat-files.tar.gz -C ./flat-files .
+          echo "✅ Archive créée :"
+          ls -lh flat-files.tar.gz
+          echo ""
+          echo "📂 Contenu de l'archive :"
+          tar -tzf flat-files.tar.gz
       - name: 📋 Afficher les imports dans le summary
         run: |
           echo "## 📋 contenu du dossier final à transférer dans le serveur" >> $GITHUB_STEP_SUMMARY
