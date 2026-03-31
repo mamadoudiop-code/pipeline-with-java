@@ -1,0 +1,62 @@
+import sailpoint.object.Application;
+import sailpoint.object.QueryOptions;
+import sailpoint.connector.Connector;
+import sailpoint.connector.ConnectorFactory;
+import sailpoint.server.Environment;
+import java.util.Iterator;
+
+QueryOptions qo = new QueryOptions();
+Iterator apps = context.search(Application.class, qo);
+
+StringBuilder sb = new StringBuilder("[");
+boolean first = true;
+
+while (apps.hasNext()) {
+    Application app = (Application) apps.next();
+
+    // Exclure apps internes IIQ
+    if (app.isLogical() || "IdentityIQ".equals(app.getName())) continue;
+
+    String appName = app.getName();
+    String appType = app.getType() != null ? app.getType() : "unknown";
+    String connTest  = "SKIPPED";
+    String connError = "";
+
+    // Tester uniquement les apps actives
+    if (!app.isDisabled()) {
+        try {
+            Connector connector = ConnectorFactory.getConnector(app, null);
+            connector.testConfiguration();
+            connTest = "SUCCESS";
+        } catch (Exception e) {
+            connTest  = "FAILED";
+            String msg = e.getMessage();
+            if (msg != null) {
+                msg = msg.replace("\"", "'")
+                         .replace("\n", " ")
+                         .replace("\r", "");
+                connError = msg.substring(0, Math.min(msg.length(), 300));
+            } else {
+                connError = "unknown error";
+            }
+        }
+    }
+
+    if (!first) sb.append(",");
+    sb.append("{");
+    sb.append("\"name\":\""      ).append(appName  ).append("\",");
+    sb.append("\"type\":\""      ).append(appType  ).append("\",");
+    sb.append("\"statut\":\""    ).append(app.isDisabled() ? "DISABLED" : "ENABLED").append("\",");
+    sb.append("\"conn_test\":\"" ).append(connTest  ).append("\",");
+    sb.append("\"conn_error\":\"").append(connError ).append("\"");
+    sb.append("}");
+    first = false;
+}
+
+sb.append("]");
+
+System.out.println("CONNECTOR_JSON_START");
+System.out.println(sb.toString());
+System.out.println("CONNECTOR_JSON_END");
+
+return null;
