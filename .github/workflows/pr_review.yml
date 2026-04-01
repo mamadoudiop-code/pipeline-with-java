@@ -13,7 +13,7 @@ jobs:
   remind:
     runs-on: ubuntu-latest
     steps:
-      - name: Find stale PRs (>4h sans review)
+      - name: Find stale PRs (>1h sans review)
         id: stale_prs
         uses: actions/github-script@v7
         with:
@@ -24,7 +24,7 @@ jobs:
               state: 'open'
             });
 
-            const STALE_HOURS = 4;
+            const STALE_HOURS = 1;
             const now = new Date();
             const stalePRs = [];
 
