@@ -1,19 +1,19 @@
 name: PR Review Reminder
-
 on:
   schedule:
-    - cron: '0 8,12,16 * * 1-5'  # 3x/jour : 8h, 12h, 16h (lundi-vendredi)
+    - cron: '0 8,12,16 * * 1-5'
   workflow_dispatch:
-  
+
 permissions:
-  pull-requests: write   # lire + commenter les PRs
-  issues: write          # poster des commentaires
+  pull-requests: write
+  issues: write
   contents: read
+
 jobs:
   remind:
     runs-on: ubuntu-latest
     steps:
-      - name: Find stale PRs (>1h sans review)
+      - name: Find stale PRs (>4h sans review)
         id: stale_prs
         uses: actions/github-script@v7
         with:
@@ -24,44 +24,120 @@ jobs:
               state: 'open'
             });
 
-            const STALE_HOURS = 1;
+            const STALE_HOURS = 4;
             const now = new Date();
             const stalePRs = [];
+            const noReviewerPRs = [];      // ← nouveau
 
             for (const pr of prs) {
-              // Ignorer les drafts
               if (pr.draft) continue;
-
-              // Ignorer les PRs sans reviewer assigné
-              if (pr.requested_reviewers.length === 0) continue;
-
-              // Vérifier les reviews déjà soumises
-              const { data: reviews } = await github.rest.pulls.listReviews({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                pull_number: pr.number
-              });
-
-              const hasRecentReview = reviews.some(r => {
-                const reviewedAt = new Date(r.submitted_at);
-                return (now - reviewedAt) / 3600000 < STALE_HOURS;
-              });
-
-              if (hasRecentReview) continue;
 
               const hoursOld = (now - new Date(pr.created_at)) / 3600000;
               if (hoursOld < STALE_HOURS) continue;
 
-              stalePRs.push({
-                number: pr.number,
-                title: pr.title,
-                author: pr.user.login,
-                url: pr.html_url,
-                reviewers: pr.requested_reviewers.map(r => r.login).join(', '),
+              const prMeta = {
+                number:   pr.number,
+                title:    pr.title,
+                author:   pr.user.login,
+                url:      pr.html_url,
                 hoursOld: Math.floor(hoursOld)
+              };
+
+              // ── Cas 1 : aucun reviewer assigné ─────────────────────────
+              if (pr.requested_reviewers.length === 0) {
+                noReviewerPRs.push(prMeta);
+                continue;                  // ← pas besoin de vérifier les reviews
+              }
+
+              // ── Cas 2 : reviewer assigné mais pas de review récente ────
+              const { data: reviews } = await github.rest.pulls.listReviews({
+                owner: context.repo.owner,
+                repo:  context.repo.repo,
+                pull_number: pr.number
+              });
+
+              const hasRecentReview = reviews.some(r =>
+                (now - new Date(r.submitted_at)) / 3600000 < STALE_HOURS
+              );
+
+              if (hasRecentReview) continue;
+
+              stalePRs.push({
+                ...prMeta,
+                reviewers: pr.requested_reviewers.map(r => r.login).join(', ')
               });
             }
 
-            core.setOutput('stale_prs_json', JSON.stringify(stalePRs));
-            core.setOutput('has_stale', stalePRs.length > 0 ? 'true' : 'false');
-            console.log(`PRs en attente : ${stalePRs.length}`);
+            core.setOutput('stale_prs_json',      JSON.stringify(stalePRs));
+            core.setOutput('no_reviewer_prs_json', JSON.stringify(noReviewerPRs));
+            core.setOutput('has_stale',     stalePRs.length > 0      ? 'true' : 'false');
+            core.setOutput('has_no_reviewer', noReviewerPRs.length > 0 ? 'true' : 'false');
+
+            console.log(`PRs en attente de review : ${stalePRs.length}`);
+            console.log(`PRs sans reviewer assigné : ${noReviewerPRs.length}`);
+      # ── Rappel PRs sans reviewer ─────────────────────────────────────────
+      - name: Comment on PRs without reviewer
+        if: steps.stale_prs.outputs.has_no_reviewer == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prs = JSON.parse('${{ steps.stale_prs.outputs.no_reviewer_prs_json }}');
+            const today = new Date().toDateString();
+
+            for (const pr of prs) {
+              const { data: comments } = await github.rest.issues.listComments({
+                owner: context.repo.owner,
+                repo:  context.repo.repo,
+                issue_number: pr.number
+              });
+
+              const alreadyCommented = comments.some(c =>
+                c.user.login === 'github-actions[bot]' &&
+                c.body.includes('<!-- no-reviewer -->') &&
+                new Date(c.created_at).toDateString() === today
+              );
+
+              if (alreadyCommented) continue;
+
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo:  context.repo.repo,
+                issue_number: pr.number,
+                body: `<!-- no-reviewer -->
+                  ⚠️ @${pr.author} — cette PR est ouverte depuis **${pr.hoursOld}h** mais **aucun reviewer n'est assigné**.
+                  ➡️ Merci d'assigner un reviewer pour débloquer la review.`
+              });
+            }
+
+      # ── Rappel PRs avec reviewer mais sans review ────────────────────────
+      - name: Comment on stale PRs
+        if: steps.stale_prs.outputs.has_stale == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prs = JSON.parse('${{ steps.stale_prs.outputs.stale_prs_json }}');
+            const today = new Date().toDateString();
+
+            for (const pr of prs) {
+              const { data: comments } = await github.rest.issues.listComments({
+                owner: context.repo.owner,
+                repo:  context.repo.repo,
+                issue_number: pr.number
+              });
+
+              const alreadyCommented = comments.some(c =>
+                c.user.login === 'github-actions[bot]' &&
+                c.body.includes('<!-- stale-review -->') &&
+                new Date(c.created_at).toDateString() === today
+              );
+
+              if (alreadyCommented) continue;
+
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo:  context.repo.repo,
+                issue_number: pr.number,
+                body: `<!-- stale-review -->
+                ⏰ Rappel : @${pr.reviewers.split(', ').join(', @')} — cette PR attend votre review depuis **+${pr.hoursOld}h**.`
+              });
+            }
