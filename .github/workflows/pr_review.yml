@@ -24,7 +24,7 @@ jobs:
               state: 'open'
             });
 
-            const STALE_HOURS = 4;
+            const STALE_HOURS = 1;
             const now = new Date();
             const stalePRs = [];
             const noReviewerPRs = [];      // ← nouveau
