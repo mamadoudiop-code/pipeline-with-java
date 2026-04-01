@@ -10,7 +10,7 @@
 
     QueryOptions qo = new QueryOptions();
     Iterator apps = context.search(Application.class, qo);
-    StringBuilder sb = new StringBuilder("[");
+    StringBuilder sb = new StringBuilder("[");ggg
     boolean first = true;
 
     while (apps.hasNext()) {
