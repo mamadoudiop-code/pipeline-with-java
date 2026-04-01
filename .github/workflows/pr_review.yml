@@ -4,7 +4,11 @@ on:
   schedule:
     - cron: '0 8,12,16 * * 1-5'  # 3x/jour : 8h, 12h, 16h (lundi-vendredi)
   workflow_dispatch:
-
+  
+permissions:
+  pull-requests: write   # lire + commenter les PRs
+  issues: write          # poster des commentaires
+  contents: read
 jobs:
   remind:
     runs-on: ubuntu-latest
