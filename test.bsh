@@ -1,0 +1,62 @@
+import sailpoint.object.Application;
+import sailpoint.object.QueryOptions;
+import sailpoint.object.Filter;
+import sailpoint.connector.ConnectorFactory;
+import sailpoint.connector.Connector;
+import sailpoint.tools.GeneralException;
+import java.util.List;
+import java.util.Date;
+import java.text.SimpleDateFormat;
+
+SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+QueryOptions qo = new QueryOptions();
+qo.add(Filter.notnull("type"));
+qo.add(Filter.ne("type", ""));
+
+List apps = context.getObjects(Application.class, qo);
+
+System.out.println("\n╔══════════════════════════════════════════════════════╗");
+System.out.println("║       TEST DE CONNEXION — TOUS LES CONNECTEURS       ║");
+System.out.println("║       " + sdf.format(new Date()) + "                       ║");
+System.out.println("╚══════════════════════════════════════════════════════╝\n");
+
+int pass = 0, fail = 0, skip = 0;
+
+for (Object obj : apps) {
+    Application app = (Application) obj;
+    String name = app.getName();
+    String type = app.getType();
+
+    if (app.isDisabled()) {
+        System.out.println("  ⏭  [SKIPPED]  " + name + "  (" + type + ")  — désactivée");
+        skip++;
+        continue;
+    }
+
+    long t0 = System.currentTimeMillis();
+    try {
+        Connector c = ConnectorFactory.getConnector(app, null);
+        if (c == null) {
+            System.out.println("  ⚠  [SKIPPED]  " + name + "  (" + type + ")  — ConnectorFactory null");
+            skip++;
+            continue;
+        }
+        c.testConfiguration();
+        long ms = System.currentTimeMillis() - t0;
+        System.out.println("  ✅ [SUCCESS]  " + name + "  (" + type + ")  — " + ms + "ms");
+        pass++;
+    } catch (Exception e) {
+        long ms = System.currentTimeMillis() - t0;
+        String msg = e.getMessage() != null ? e.getMessage() : e.getClass().getName();
+        // Tronquer si trop long
+        if (msg.length() > 120) msg = msg.substring(0, 120) + "...";
+        System.out.println("  ❌ [FAILURE]  " + name + "  (" + type + ")  — " + ms + "ms");
+        System.out.println("               └─ " + msg);
+        fail++;
+    }
+}
+
+System.out.println("\n══════════════════════════════════════════════════════");
+System.out.println("  RÉSUMÉ  →  ✅ " + pass + " SUCCESS   ❌ " + fail + " FAILURE   ⏭ " + skip + " SKIPPED");
+System.out.println("  Total applications testées : " + apps.size());
+System.out.println("══════════════════════════════════════════════════════\n");
