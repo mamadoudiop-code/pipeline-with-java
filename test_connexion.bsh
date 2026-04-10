@@ -1,0 +1,141 @@
+import sailpoint.object.Application;
+import sailpoint.object.QueryOptions;
+import sailpoint.object.Filter;
+import sailpoint.connector.ConnectorFactory;
+import sailpoint.connector.Connector;
+import sailpoint.api.SailPointContext;
+import sailpoint.tools.GeneralException;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Date;
+import java.text.SimpleDateFormat;
+
+// ─── Contexte ────────────────────────────────────────────────
+SailPointContext ctx = context;
+SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
+String runTimestamp = sdf.format(new Date());
+
+// ─── Récupérer toutes les applications (connecteurs actifs) ──
+QueryOptions qo = new QueryOptions();
+// Exclure les apps sans type de connecteur (templates, logical, etc.)
+qo.add(Filter.notnull("type"));
+qo.add(Filter.ne("type", ""));
+
+List<Application> applications = ctx.getObjects(Application.class, qo);
+
+List<Map> results = new ArrayList();
+int totalPass = 0;
+int totalFail = 0;
+int totalSkip = 0;
+
+for (Application app : applications) {
+
+    Map result = new HashMap();
+    result.put("appName",   app.getName());
+    result.put("appType",   app.getType());
+    result.put("appId",     app.getId());
+
+    // Ignorer les apps désactivées
+    if (app.isDisabled()) {
+        result.put("status",  "SKIPPED");
+        result.put("reason",  "Application disabled");
+        result.put("elapsed", 0);
+        results.add(result);
+        totalSkip++;
+        continue;
+    }
+
+    // Ignorer les apps sans host/URL configuré (évite les NPE)
+    Object host = app.getAttributeValue("host");
+    Object url  = app.getAttributeValue("url");
+    if (host == null && url == null) {
+        // Tenter quand même — certains connecteurs (LDAP, etc.) n'ont pas ces attributs
+    }
+
+    long startMs = System.currentTimeMillis();
+    try {
+        Connector connector = ConnectorFactory.getConnector(app, null);
+        if (connector == null) {
+            result.put("status",  "SKIPPED");
+            result.put("reason",  "ConnectorFactory returned null — type may not be registered");
+            result.put("elapsed", 0);
+            results.add(result);
+            totalSkip++;
+            continue;
+        }
+
+        connector.testConfiguration();
+
+        long elapsed = System.currentTimeMillis() - startMs;
+        result.put("status",  "SUCCESS");
+        result.put("reason",  "testConfiguration() passed");
+        result.put("elapsed", elapsed);
+        totalPass++;
+
+    } catch (ConnectorException ce) {
+        long elapsed = System.currentTimeMillis() - startMs;
+        result.put("status",  "FAILURE");
+        result.put("reason",  ce.getMessage() != null ? ce.getMessage() : ce.getClass().getName());
+        result.put("elapsed", elapsed);
+        totalFail++;
+
+    } catch (GeneralException ge) {
+        long elapsed = System.currentTimeMillis() - startMs;
+        result.put("status",  "FAILURE");
+        result.put("reason",  ge.getMessage() != null ? ge.getMessage() : ge.getClass().getName());
+        result.put("elapsed", elapsed);
+        totalFail++;
+
+    } catch (Exception e) {
+        long elapsed = System.currentTimeMillis() - startMs;
+        result.put("status",  "ERROR");
+        result.put("reason",  e.getClass().getName() + ": " + e.getMessage());
+        result.put("elapsed", elapsed);
+        totalFail++;
+    }
+
+    results.add(result);
+}
+
+// ─── Sérialisation JSON manuelle (pas de librairie externe dans IIQ) ─
+StringBuilder json = new StringBuilder();
+json.append("{\n");
+json.append("  \"runTimestamp\": \"" + runTimestamp + "\",\n");
+json.append("  \"totalApplications\": " + results.size() + ",\n");
+json.append("  \"totalPass\": "    + totalPass + ",\n");
+json.append("  \"totalFail\": "    + totalFail + ",\n");
+json.append("  \"totalSkipped\": " + totalSkip + ",\n");
+json.append("  \"results\": [\n");
+
+for (int i = 0; i < results.size(); i++) {
+    Map r = (Map) results.get(i);
+    String reason = (String) r.get("reason");
+    // Échapper les guillemets et les retours ligne dans le message d'erreur
+    if (reason != null) {
+        reason = reason.replace("\\", "\\\\")
+                       .replace("\"", "\\\"")
+                       .replace("\n", " ")
+                       .replace("\r", "");
+    } else {
+        reason = "";
+    }
+    json.append("    {\n");
+    json.append("      \"appName\": \""  + r.get("appName") + "\",\n");
+    json.append("      \"appType\": \""  + r.get("appType") + "\",\n");
+    json.append("      \"appId\": \""    + r.get("appId")   + "\",\n");
+    json.append("      \"status\": \""   + r.get("status")  + "\",\n");
+    json.append("      \"elapsedMs\": "  + r.get("elapsed") + ",\n");
+    json.append("      \"reason\": \""   + reason           + "\"\n");
+    json.append("    }");
+    if (i < results.size() - 1) json.append(",");
+    json.append("\n");
+}
+json.append("  ]\n");
+json.append("}");
+
+// ─── Balises de parsing Ansible ──────────────────────────────
+System.out.println("CONNECTOR_JSON_START");
+System.out.println(json.toString());
+System.out.println("CONNECTOR_JSON_END");
