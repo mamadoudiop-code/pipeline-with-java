@@ -1,0 +1,114 @@
+// Construction des lignes HTML
+StringBuilder rows = new StringBuilder();
+for (int i = 0; i < results.size(); i++) {
+    HashMap r  = (HashMap) results.get(i);
+    String st  = (String) r.get("status");
+    String nm  = (String) r.get("name");
+    String tp  = (String) r.get("type");
+    String el  = (String) r.get("elapsed");
+    String rs  = (String) r.get("reason");
+
+    String css = "rk";
+    if ("SUCCESS".equals(st)) {
+        css = "rs";
+    }
+    if ("FAILURE".equals(st)) {
+        css = "rf";
+    }
+
+    rows.append("<tr class='");
+    rows.append(css);
+    rows.append("'>");
+    rows.append("<td>");
+    rows.append(nm);
+    rows.append("</td>");
+    rows.append("<td>");
+    rows.append(tp);
+    rows.append("</td>");
+    rows.append("<td>");
+    rows.append(st);
+    rows.append("</td>");
+    rows.append("<td>");
+    rows.append(el);
+    rows.append("</td>");
+    rows.append("<td class='msg'>");
+    rows.append(rs);
+    rows.append("</td>");
+    rows.append("</tr>");
+}
+
+// HTML — construit ligne par ligne
+StringBuilder html = new StringBuilder();
+html.append("<html><head><meta charset='UTF-8'/><title>IIQ Connectors</title>");
+html.append("<style>");
+html.append("body{font-family:monospace;background:#0b0e14;color:#c9d1e0;padding:2rem}");
+html.append("h1{color:#00d4ff;margin-bottom:1rem}");
+html.append(".sub{color:#4a5568;font-size:.75rem;margin-bottom:1.5rem}");
+html.append(".kpis{display:flex;gap:1rem;margin-bottom:1.5rem}");
+html.append(".kpi{background:#111621;border:1px solid #1e2433;border-radius:8px;padding:1rem 1.5rem}");
+html.append(".kpi label{font-size:.7rem;color:#4a5568;display:block}");
+html.append(".kpi span{font-size:2rem;font-weight:bold}");
+html.append(".t span{color:#00d4ff}");
+html.append(".s span{color:#00e5a0}");
+html.append(".f span{color:#ff4d6d}");
+html.append(".k span{color:#f0a500}");
+html.append("input{background:#111621;border:1px solid #1e2433;color:#c9d1e0;");
+html.append("padding:.5rem 1rem;border-radius:6px;font-family:monospace;");
+html.append("font-size:.8rem;width:100%;margin-bottom:1rem}");
+html.append("table{width:100%;border-collapse:collapse;background:#111621;border-radius:8px;overflow:hidden}");
+html.append("th{font-size:.65rem;text-transform:uppercase;color:#4a5568;");
+html.append("padding:.7rem 1rem;text-align:left;border-bottom:1px solid #1e2433}");
+html.append("td{padding:.7rem 1rem;border-bottom:1px solid #1e2433;font-size:.8rem}");
+html.append("tr:last-child td{border-bottom:none}");
+html.append(".rs td:first-child{color:#00e5a0}");
+html.append(".rf td:first-child{color:#ff4d6d}");
+html.append(".rk td:first-child{color:#4a5568}");
+html.append(".msg{color:#ff4d6d;font-size:.72rem}");
+html.append("</style></head><body>");
+html.append("<h1>SailPoint IIQ 8.4p3 - Rapport Connecteurs</h1>");
+html.append("<p class='sub'>Genere le : ");
+html.append(ts);
+html.append("</p>");
+html.append("<div class='kpis'>");
+html.append("<div class='kpi t'><label>TOTAL</label><span>");
+html.append(results.size());
+html.append("</span></div>");
+html.append("<div class='kpi s'><label>SUCCESS</label><span>");
+html.append(pass);
+html.append("</span></div>");
+html.append("<div class='kpi f'><label>FAILURE</label><span>");
+html.append(fail);
+html.append("</span></div>");
+html.append("<div class='kpi k'><label>SKIPPED</label><span>");
+html.append(skip);
+html.append("</span></div>");
+html.append("</div>");
+html.append("<input type='text' id='q' placeholder='Filtrer...' oninput='go()'/>");
+html.append("<table><thead><tr>");
+html.append("<th>Application</th>");
+html.append("<th>Type</th>");
+html.append("<th>Statut</th>");
+html.append("<th>Duree</th>");
+html.append("<th>Message</th>");
+html.append("</tr></thead>");
+html.append("<tbody id='tb'>");
+html.append(rows.toString());
+html.append("</tbody></table>");
+html.append("<script>");
+html.append("function go(){");
+html.append("var q=document.getElementById('q').value.toLowerCase();");
+html.append("var trs=document.querySelectorAll('#tb tr');");
+html.append("for(var i=0;i<trs.length;i++){");
+html.append("trs[i].style.display=trs[i].textContent.toLowerCase().indexOf(q)>=0?'':'none';");
+html.append("}}");
+html.append("</script>");
+html.append("</body></html>");
+
+BufferedWriter w = new BufferedWriter(new FileWriter(reportPath));
+w.write(html.toString());
+w.close();
+
+System.out.println("[DONE] SUCCESS=" + pass + " FAILURE=" + fail + " SKIPPED=" + skip);
+System.out.println("[DONE] Rapport: " + reportPath);
+
+return "SUCCESS:" + pass + " | FAILURE:" + fail + " | SKIPPED:" + skip + " | Rapport: " + reportPath;
