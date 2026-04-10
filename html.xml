@@ -1,0 +1,405 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="Test All Connectors" type="Generic">
+  <Description>
+    Teste tous les connecteurs IIQ 8.4p3 et génère un rapport HTML.
+    Usage : IIQ> rule "Test All Connectors"
+    Rapport : /tmp/iiq_connector_report.html
+  </Description>
+  <Source><![CDATA[
+
+import sailpoint.object.Application;
+import sailpoint.object.QueryOptions;
+import sailpoint.object.Filter;
+import sailpoint.connector.ConnectorFactory;
+import sailpoint.connector.Connector;
+import sailpoint.tools.GeneralException;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Date;
+import java.text.SimpleDateFormat;
+import java.io.FileWriter;
+import java.io.BufferedWriter;
+
+// ─── Config ──────────────────────────────────────────────────
+String reportPath = "/tmp/iiq_connector_report.html";
+SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+String runTimestamp = sdf.format(new Date());
+
+// ─── Récupération des applications ───────────────────────────
+QueryOptions qo = new QueryOptions();
+qo.add(Filter.notnull("type"));
+qo.add(Filter.ne("type", ""));
+List apps = context.getObjects(Application.class, qo);
+
+// ─── Exécution des tests ─────────────────────────────────────
+List results = new ArrayList();
+int pass = 0, fail = 0, skip = 0;
+
+System.out.println("\n[IIQ] Démarrage des tests — " + runTimestamp);
+
+for (Object obj : apps) {
+    Application app = (Application) obj;
+    Map row = new HashMap();
+    row.put("name", app.getName());
+    row.put("type", app.getType());
+
+    if (app.isDisabled()) {
+        row.put("status", "SKIPPED");
+        row.put("reason", "Application désactivée");
+        row.put("elapsed", "—");
+        results.add(row);
+        skip++;
+        System.out.println("  [SKIPPED]  " + app.getName());
+        continue;
+    }
+
+    long t0 = System.currentTimeMillis();
+    try {
+        Connector c = ConnectorFactory.getConnector(app, null);
+        if (c == null) {
+            row.put("status", "SKIPPED");
+            row.put("reason", "ConnectorFactory a retourné null");
+            row.put("elapsed", "—");
+            results.add(row);
+            skip++;
+            System.out.println("  [SKIPPED]  " + app.getName() + " — factory null");
+            continue;
+        }
+        c.testConfiguration();
+        long ms = System.currentTimeMillis() - t0;
+        row.put("status", "SUCCESS");
+        row.put("reason", "");
+        row.put("elapsed", ms + " ms");
+        pass++;
+        System.out.println("  [SUCCESS]  " + app.getName() + " — " + ms + "ms");
+    } catch (Exception e) {
+        long ms = System.currentTimeMillis() - t0;
+        String msg = e.getMessage() != null ? e.getMessage() : e.getClass().getName();
+        if (msg.length() > 200) msg = msg.substring(0, 200) + "...";
+        // Échapper HTML
+        msg = msg.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;").replace("\"","&quot;");
+        row.put("status", "FAILURE");
+        row.put("reason", msg);
+        row.put("elapsed", ms + " ms");
+        fail++;
+        System.out.println("  [FAILURE]  " + app.getName() + " — " + ms + "ms");
+    }
+    results.add(row);
+}
+
+// ─── Génération des lignes de tableau HTML ───────────────────
+StringBuilder rows = new StringBuilder();
+for (Object o : results) {
+    Map r = (Map) o;
+    String status  = (String) r.get("status");
+    String cssClass = "success";
+    String badge    = "SUCCESS";
+    if ("FAILURE".equals(status)) { cssClass = "failure"; badge = "FAILURE"; }
+    if ("SKIPPED".equals(status)) { cssClass = "skipped"; badge = "SKIPPED"; }
+
+    rows.append("<tr class=\"row-").append(cssClass).append("\">\n");
+    rows.append("  <td>").append(r.get("name")).append("</td>\n");
+    rows.append("  <td><span class=\"chip chip-type\">").append(r.get("type")).append("</span></td>\n");
+    rows.append("  <td><span class=\"badge badge-").append(cssClass).append("\">").append(badge).append("</span></td>\n");
+    rows.append("  <td class=\"elapsed\">").append(r.get("elapsed")).append("</td>\n");
+    rows.append("  <td class=\"reason\">").append(r.get("reason")).append("</td>\n");
+    rows.append("</tr>\n");
+}
+
+// ─── Template HTML complet ────────────────────────────────────
+String html =
+"<!DOCTYPE html>\n" +
+"<html lang=\"fr\">\n" +
+"<head>\n" +
+"<meta charset=\"UTF-8\"/>\n" +
+"<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"/>\n" +
+"<title>IIQ — Rapport Connecteurs</title>\n" +
+"<style>\n" +
+"  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Syne:wght@400;700;800&display=swap');\n" +
+"\n" +
+"  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }\n" +
+"\n" +
+"  :root {\n" +
+"    --bg:        #0b0e14;\n" +
+"    --surface:   #111621;\n" +
+"    --border:    #1e2433;\n" +
+"    --accent:    #00d4ff;\n" +
+"    --accent2:   #7b5ea7;\n" +
+"    --success:   #00e5a0;\n" +
+"    --failure:   #ff4d6d;\n" +
+"    --skipped:   #f0a500;\n" +
+"    --text:      #c9d1e0;\n" +
+"    --text-dim:  #4a5568;\n" +
+"    --mono:      'JetBrains Mono', monospace;\n" +
+"    --sans:      'Syne', sans-serif;\n" +
+"  }\n" +
+"\n" +
+"  body {\n" +
+"    background: var(--bg);\n" +
+"    color: var(--text);\n" +
+"    font-family: var(--sans);\n" +
+"    min-height: 100vh;\n" +
+"    padding: 2rem;\n" +
+"  }\n" +
+"\n" +
+"  /* ── HEADER ── */\n" +
+"  .header {\n" +
+"    display: flex;\n" +
+"    align-items: flex-start;\n" +
+"    justify-content: space-between;\n" +
+"    border-bottom: 1px solid var(--border);\n" +
+"    padding-bottom: 1.5rem;\n" +
+"    margin-bottom: 2rem;\n" +
+"    flex-wrap: wrap;\n" +
+"    gap: 1rem;\n" +
+"  }\n" +
+"  .header-left h1 {\n" +
+"    font-size: 1.8rem;\n" +
+"    font-weight: 800;\n" +
+"    color: #fff;\n" +
+"    letter-spacing: -0.02em;\n" +
+"  }\n" +
+"  .header-left h1 span { color: var(--accent); }\n" +
+"  .header-left p {\n" +
+"    font-family: var(--mono);\n" +
+"    font-size: 0.75rem;\n" +
+"    color: var(--text-dim);\n" +
+"    margin-top: 0.4rem;\n" +
+"  }\n" +
+"  .env-badge {\n" +
+"    font-family: var(--mono);\n" +
+"    font-size: 0.7rem;\n" +
+"    background: var(--accent2);\n" +
+"    color: #fff;\n" +
+"    padding: 0.3rem 0.8rem;\n" +
+"    border-radius: 4px;\n" +
+"    letter-spacing: 0.1em;\n" +
+"    text-transform: uppercase;\n" +
+"  }\n" +
+"\n" +
+"  /* ── KPI CARDS ── */\n" +
+"  .kpi-grid {\n" +
+"    display: grid;\n" +
+"    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));\n" +
+"    gap: 1rem;\n" +
+"    margin-bottom: 2rem;\n" +
+"  }\n" +
+"  .kpi {\n" +
+"    background: var(--surface);\n" +
+"    border: 1px solid var(--border);\n" +
+"    border-radius: 8px;\n" +
+"    padding: 1.2rem 1.5rem;\n" +
+"    position: relative;\n" +
+"    overflow: hidden;\n" +
+"  }\n" +
+"  .kpi::before {\n" +
+"    content: '';\n" +
+"    position: absolute;\n" +
+"    top: 0; left: 0; right: 0;\n" +
+"    height: 3px;\n" +
+"  }\n" +
+"  .kpi.total::before  { background: var(--accent); }\n" +
+"  .kpi.success::before{ background: var(--success); }\n" +
+"  .kpi.failure::before{ background: var(--failure); }\n" +
+"  .kpi.skipped::before{ background: var(--skipped); }\n" +
+"  .kpi label {\n" +
+"    font-family: var(--mono);\n" +
+"    font-size: 0.65rem;\n" +
+"    color: var(--text-dim);\n" +
+"    text-transform: uppercase;\n" +
+"    letter-spacing: 0.12em;\n" +
+"  }\n" +
+"  .kpi .value {\n" +
+"    font-size: 2.4rem;\n" +
+"    font-weight: 800;\n" +
+"    line-height: 1;\n" +
+"    margin-top: 0.4rem;\n" +
+"  }\n" +
+"  .kpi.total   .value { color: var(--accent); }\n" +
+"  .kpi.success .value { color: var(--success); }\n" +
+"  .kpi.failure .value { color: var(--failure); }\n" +
+"  .kpi.skipped .value { color: var(--skipped); }\n" +
+"\n" +
+"  /* ── FILTER BAR ── */\n" +
+"  .filter-bar {\n" +
+"    display: flex;\n" +
+"    gap: 0.5rem;\n" +
+"    margin-bottom: 1rem;\n" +
+"    flex-wrap: wrap;\n" +
+"  }\n" +
+"  .filter-bar input {\n" +
+"    flex: 1;\n" +
+"    min-width: 200px;\n" +
+"    background: var(--surface);\n" +
+"    border: 1px solid var(--border);\n" +
+"    color: var(--text);\n" +
+"    font-family: var(--mono);\n" +
+"    font-size: 0.8rem;\n" +
+"    padding: 0.5rem 1rem;\n" +
+"    border-radius: 6px;\n" +
+"    outline: none;\n" +
+"  }\n" +
+"  .filter-bar input:focus { border-color: var(--accent); }\n" +
+"  .filter-btn {\n" +
+"    font-family: var(--mono);\n" +
+"    font-size: 0.7rem;\n" +
+"    padding: 0.5rem 1rem;\n" +
+"    border-radius: 6px;\n" +
+"    border: 1px solid var(--border);\n" +
+"    background: var(--surface);\n" +
+"    color: var(--text-dim);\n" +
+"    cursor: pointer;\n" +
+"    transition: all 0.15s;\n" +
+"    text-transform: uppercase;\n" +
+"    letter-spacing: 0.08em;\n" +
+"  }\n" +
+"  .filter-btn.active, .filter-btn:hover { border-color: var(--accent); color: var(--accent); }\n" +
+"  .filter-btn.f-success.active { border-color: var(--success); color: var(--success); }\n" +
+"  .filter-btn.f-failure.active { border-color: var(--failure); color: var(--failure); }\n" +
+"  .filter-btn.f-skipped.active { border-color: var(--skipped); color: var(--skipped); }\n" +
+"\n" +
+"  /* ── TABLE ── */\n" +
+"  .table-wrap {\n" +
+"    background: var(--surface);\n" +
+"    border: 1px solid var(--border);\n" +
+"    border-radius: 10px;\n" +
+"    overflow: hidden;\n" +
+"  }\n" +
+"  table { width: 100%; border-collapse: collapse; }\n" +
+"  thead th {\n" +
+"    font-family: var(--mono);\n" +
+"    font-size: 0.65rem;\n" +
+"    text-transform: uppercase;\n" +
+"    letter-spacing: 0.1em;\n" +
+"    color: var(--text-dim);\n" +
+"    padding: 0.85rem 1rem;\n" +
+"    text-align: left;\n" +
+"    border-bottom: 1px solid var(--border);\n" +
+"    background: rgba(255,255,255,0.02);\n" +
+"  }\n" +
+"  tbody tr {\n" +
+"    border-bottom: 1px solid var(--border);\n" +
+"    transition: background 0.15s;\n" +
+"  }\n" +
+"  tbody tr:last-child { border-bottom: none; }\n" +
+"  tbody tr:hover { background: rgba(0,212,255,0.04); }\n" +
+"  tbody td {\n" +
+"    padding: 0.85rem 1rem;\n" +
+"    font-size: 0.85rem;\n" +
+"    vertical-align: middle;\n" +
+"  }\n" +
+"  td:first-child { font-family: var(--mono); font-weight: 600; color: #e2e8f0; }\n" +
+"\n" +
+"  .row-failure td:first-child { color: var(--failure); }\n" +
+"  .row-skipped td:first-child { color: var(--text-dim); }\n" +
+"\n" +
+"  .badge {\n" +
+"    font-family: var(--mono);\n" +
+"    font-size: 0.65rem;\n" +
+"    font-weight: 600;\n" +
+"    padding: 0.25rem 0.6rem;\n" +
+"    border-radius: 4px;\n" +
+"    letter-spacing: 0.08em;\n" +
+"    text-transform: uppercase;\n" +
+"  }\n" +
+"  .badge-success { background: rgba(0,229,160,0.12); color: var(--success); border: 1px solid rgba(0,229,160,0.3); }\n" +
+"  .badge-failure { background: rgba(255,77,109,0.12); color: var(--failure); border: 1px solid rgba(255,77,109,0.3); }\n" +
+"  .badge-skipped { background: rgba(240,165,0,0.12);  color: var(--skipped); border: 1px solid rgba(240,165,0,0.3); }\n" +
+"\n" +
+"  .chip { font-family: var(--mono); font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: 4px; }\n" +
+"  .chip-type { background: rgba(123,94,167,0.15); color: var(--accent2); border: 1px solid rgba(123,94,167,0.3); }\n" +
+"\n" +
+"  .elapsed { font-family: var(--mono); font-size: 0.75rem; color: var(--text-dim); }\n" +
+"  .reason  { font-family: var(--mono); font-size: 0.72rem; color: var(--failure); max-width: 400px; word-break: break-word; }\n" +
+"\n" +
+"  .footer {\n" +
+"    margin-top: 2rem;\n" +
+"    font-family: var(--mono);\n" +
+"    font-size: 0.7rem;\n" +
+"    color: var(--text-dim);\n" +
+"    text-align: right;\n" +
+"  }\n" +
+"</style>\n" +
+"</head>\n" +
+"<body>\n" +
+"\n" +
+"<div class=\"header\">\n" +
+"  <div class=\"header-left\">\n" +
+"    <h1>SailPoint <span>IIQ</span> — Rapport Connecteurs</h1>\n" +
+"    <p>Généré le : " + runTimestamp + " &nbsp;|&nbsp; SailPoint IdentityIQ 8.4p3</p>\n" +
+"  </div>\n" +
+"  <span class=\"env-badge\">PROD</span>\n" +
+"</div>\n" +
+"\n" +
+"<div class=\"kpi-grid\">\n" +
+"  <div class=\"kpi total\">  <label>Total</label>   <div class=\"value\">" + results.size() + "</div></div>\n" +
+"  <div class=\"kpi success\"><label>Success</label>  <div class=\"value\">" + pass + "</div></div>\n" +
+"  <div class=\"kpi failure\"><label>Failure</label>  <div class=\"value\">" + fail + "</div></div>\n" +
+"  <div class=\"kpi skipped\"><label>Skipped</label>  <div class=\"value\">" + skip + "</div></div>\n" +
+"</div>\n" +
+"\n" +
+"<div class=\"filter-bar\">\n" +
+"  <input type=\"text\" id=\"searchInput\" placeholder=\"Filtrer par nom ou type...\" onkeyup=\"filterTable()\"/>\n" +
+"  <button class=\"filter-btn active\" onclick=\"filterStatus('ALL',this)\">Tous</button>\n" +
+"  <button class=\"filter-btn f-success\" onclick=\"filterStatus('SUCCESS',this)\">Success</button>\n" +
+"  <button class=\"filter-btn f-failure\" onclick=\"filterStatus('FAILURE',this)\">Failure</button>\n" +
+"  <button class=\"filter-btn f-skipped\" onclick=\"filterStatus('SKIPPED',this)\">Skipped</button>\n" +
+"</div>\n" +
+"\n" +
+"<div class=\"table-wrap\">\n" +
+"  <table id=\"connTable\">\n" +
+"    <thead>\n" +
+"      <tr>\n" +
+"        <th>Application</th>\n" +
+"        <th>Type</th>\n" +
+"        <th>Statut</th>\n" +
+"        <th>Durée</th>\n" +
+"        <th>Message</th>\n" +
+"      </tr>\n" +
+"    </thead>\n" +
+"    <tbody id=\"tableBody\">\n" +
+rows.toString() +
+"    </tbody>\n" +
+"  </table>\n" +
+"</div>\n" +
+"\n" +
+"<div class=\"footer\">SailPoint IIQ 8.4p3 — Connector Health Report &nbsp;|&nbsp; " + runTimestamp + "</div>\n" +
+"\n" +
+"<script>\n" +
+"let currentStatus = 'ALL';\n" +
+"function filterTable() {\n" +
+"  const q = document.getElementById('searchInput').value.toLowerCase();\n" +
+"  document.querySelectorAll('#tableBody tr').forEach(row => {\n" +
+"    const text   = row.textContent.toLowerCase();\n" +
+"    const status = row.className.includes('success') ? 'SUCCESS'\n" +
+"                 : row.className.includes('failure') ? 'FAILURE' : 'SKIPPED';\n" +
+"    const matchText   = text.includes(q);\n" +
+"    const matchStatus = currentStatus === 'ALL' || status === currentStatus;\n" +
+"    row.style.display = (matchText && matchStatus) ? '' : 'none';\n" +
+"  });\n" +
+"}\n" +
+"function filterStatus(status, btn) {\n" +
+"  currentStatus = status;\n" +
+"  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));\n" +
+"  btn.classList.add('active');\n" +
+"  filterTable();\n" +
+"}\n" +
+"</script>\n" +
+"</body>\n" +
+"</html>\n";
+
+// ─── Écriture du fichier HTML ─────────────────────────────────
+BufferedWriter writer = new BufferedWriter(new FileWriter(reportPath));
+writer.write(html);
+writer.close();
+
+System.out.println("\n[IIQ] Rapport HTML généré : " + reportPath);
+System.out.println("[IIQ] SUCCESS: " + pass + "  FAILURE: " + fail + "  SKIPPED: " + skip);
+
+return "Rapport écrit dans " + reportPath + " — SUCCESS:" + pass + " FAILURE:" + fail + " SKIPPED:" + skip;
+
+  ]]></Source>
+</Rule>
