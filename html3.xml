@@ -1,0 +1,202 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="Test All Connectors" type="Generic">
+  <Description>
+    Teste tous les connecteurs IIQ et ecrit un rapport HTML dans /tmp.
+    Usage : rule "Test All Connectors"
+  </Description>
+  <Source><![CDATA[
+
+import sailpoint.object.Application;
+import sailpoint.object.QueryOptions;
+import sailpoint.object.Filter;
+import sailpoint.connector.ConnectorFactory;
+import sailpoint.connector.Connector;
+import sailpoint.connector.ConnectorException;
+import sailpoint.tools.GeneralException;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Date;
+import java.text.SimpleDateFormat;
+import java.io.FileWriter;
+import java.io.BufferedWriter;
+import java.io.IOException;
+
+String reportPath = "/tmp/iiq_connector_report.html";
+SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+String ts = sdf.format(new Date());
+
+QueryOptions qo = new QueryOptions();
+qo.add(Filter.notnull("type"));
+qo.add(Filter.ne("type", ""));
+
+List apps = context.getObjects(Application.class, qo);
+
+List results = new ArrayList();
+int pass = 0;
+int fail = 0;
+int skip = 0;
+
+for (int i = 0; i < apps.size(); i++) {
+
+    Application app = (Application) apps.get(i);
+
+    String appName = app.getName();
+    String appType = app.getType();
+    if (appType == null) appType = "N/A";
+
+    HashMap row = new HashMap();
+    row.put("name",    appName);
+    row.put("type",    appType);
+    row.put("status",  "");
+    row.put("reason",  "");
+    row.put("elapsed", "-");
+
+    if (app.isDisabled()) {
+        row.put("status", "SKIPPED");
+        row.put("reason", "Application desactivee");
+        results.add(row);
+        skip++;
+        continue;
+    }
+
+    Connector conn = null;
+
+    long t0 = System.currentTimeMillis();
+
+    boolean testOk = false;
+    String  errMsg = "";
+
+    try {
+        conn = ConnectorFactory.getConnector(app, null);
+    } catch (ConnectorException ce) {
+        errMsg = "ConnectorFactory: " + ce.getMessage();
+    } catch (GeneralException ge) {
+        errMsg = "GeneralException: " + ge.getMessage();
+    }
+
+    if (conn == null && errMsg.equals("")) {
+        row.put("status", "SKIPPED");
+        row.put("reason", "ConnectorFactory a retourne null");
+        results.add(row);
+        skip++;
+        continue;
+    }
+
+    if (!errMsg.equals("")) {
+        long ms = System.currentTimeMillis() - t0;
+        row.put("status",  "FAILURE");
+        row.put("reason",  errMsg.length() > 150 ? errMsg.substring(0,150)+"..." : errMsg);
+        row.put("elapsed", ms + " ms");
+        results.add(row);
+        fail++;
+        continue;
+    }
+
+    try {
+        conn.testConfiguration();
+        testOk = true;
+    } catch (ConnectorException ce) {
+        errMsg = ce.getMessage() != null ? ce.getMessage() : "ConnectorException sans message";
+    } catch (GeneralException ge) {
+        errMsg = ge.getMessage() != null ? ge.getMessage() : "GeneralException sans message";
+    }
+
+    long elapsed = System.currentTimeMillis() - t0;
+    String elapsedStr = elapsed + " ms";
+
+    if (testOk) {
+        row.put("status",  "SUCCESS");
+        row.put("reason",  "");
+        row.put("elapsed", elapsedStr);
+        pass++;
+    } else {
+        if (errMsg.length() > 150) errMsg = errMsg.substring(0, 150) + "...";
+        errMsg = errMsg.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;");
+        row.put("status",  "FAILURE");
+        row.put("reason",  errMsg);
+        row.put("elapsed", elapsedStr);
+        fail++;
+    }
+
+    results.add(row);
+}
+
+// ── Construction des lignes du tableau ───────────────────────
+StringBuilder rows = new StringBuilder();
+for (int i = 0; i < results.size(); i++) {
+    HashMap r    = (HashMap) results.get(i);
+    String  st   = (String)  r.get("status");
+    String  css  = "SUCCESS".equals(st) ? "rs" : "FAILURE".equals(st) ? "rf" : "rk";
+    rows.append("<tr class='" + css + "'>");
+    rows.append("<td>" + r.get("name")    + "</td>");
+    rows.append("<td>" + r.get("type")    + "</td>");
+    rows.append("<td>" + st               + "</td>");
+    rows.append("<td>" + r.get("elapsed") + "</td>");
+    rows.append("<td class='msg'>" + r.get("reason") + "</td>");
+    rows.append("</tr>\n");
+}
+
+// ── HTML ──────────────────────────────────────────────────────
+String style = "<style>"
++ "body{font-family:monospace;background:#0b0e14;color:#c9d1e0;padding:2rem}"
++ "h1{color:#00d4ff;margin-bottom:.5rem}"
++ ".sub{color:#4a5568;font-size:.75rem;margin-bottom:1.5rem}"
++ ".kpis{display:flex;gap:1rem;margin-bottom:1.5rem}"
++ ".kpi{background:#111621;border:1px solid #1e2433;border-radius:8px;padding:1rem 1.5rem}"
++ ".kpi label{font-size:.7rem;color:#4a5568;display:block;margin-bottom:.3rem}"
++ ".kpi span{font-size:1.8rem;font-weight:bold}"
++ ".t span{color:#00d4ff}.s span{color:#00e5a0}.f span{color:#ff4d6d}.k span{color:#f0a500}"
++ "input{background:#111621;border:1px solid #1e2433;color:#c9d1e0;padding:.5rem 1rem;"
++ "border-radius:6px;font-family:monospace;font-size:.8rem;width:300px;margin-bottom:1rem}"
++ "table{width:100%;border-collapse:collapse}"
++ "th{font-size:.65rem;text-transform:uppercase;color:#4a5568;"
++ "padding:.7rem 1rem;text-align:left;border-bottom:1px solid #1e2433}"
++ "td{padding:.7rem 1rem;border-bottom:1px solid #1e2433;font-size:.8rem}"
++ ".rs td:first-child{color:#00e5a0}"
++ ".rf td:first-child{color:#ff4d6d}"
++ ".rk td:first-child{color:#4a5568}"
++ ".msg{color:#ff4d6d;font-size:.72rem}"
++ "</style>";
+
+String script = "<script>"
++ "function go(){"
++ "var q=document.getElementById('q').value.toLowerCase();"
++ "var trs=document.querySelectorAll('#tb tr');"
++ "for(var i=0;i<trs.length;i++){"
++ "trs[i].style.display=trs[i].textContent.toLowerCase().indexOf(q)>=0?'':'none';"
++ "}}"
++ "</script>";
+
+String html = "<html><head><meta charset='UTF-8'/><title>IIQ Connectors</title>"
++ style + "</head><body>"
++ "<h1>SailPoint IIQ 8.4p3 — Rapport Connecteurs</h1>"
++ "<p class='sub'>Genere le : " + ts + "</p>"
++ "<div class='kpis'>"
++ "<div class='kpi t'><label>TOTAL</label><span>"   + results.size() + "</span></div>"
++ "<div class='kpi s'><label>SUCCESS</label><span>" + pass           + "</span></div>"
++ "<div class='kpi f'><label>FAILURE</label><span>" + fail           + "</span></div>"
++ "<div class='kpi k'><label>SKIPPED</label><span>" + skip           + "</span></div>"
++ "</div>"
++ "<input type='text' id='q' placeholder='Filtrer...' oninput='go()'/>"
++ "<table><thead><tr>"
++ "<th>Application</th><th>Type</th><th>Statut</th><th>Duree</th><th>Message</th>"
++ "</tr></thead>"
++ "<tbody id='tb'>" + rows.toString() + "</tbody>"
++ "</table>"
++ script
++ "</body></html>";
+
+// ── Écriture du fichier ───────────────────────────────────────
+BufferedWriter w = new BufferedWriter(new FileWriter(reportPath));
+w.write(html);
+w.close();
+
+System.out.println("[DONE] SUCCESS=" + pass + " FAILURE=" + fail + " SKIPPED=" + skip);
+System.out.println("[DONE] Rapport: " + reportPath);
+
+return "SUCCESS:" + pass + " | FAILURE:" + fail + " | SKIPPED:" + skip;
+
+  ]]></Source>
+</Rule>
