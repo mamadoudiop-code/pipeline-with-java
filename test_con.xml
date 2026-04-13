@@ -1,0 +1,107 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="Test All Connectors" type="Generic">
+  <Source><![CDATA[
+
+import sailpoint.object.Application;
+import sailpoint.object.QueryOptions;
+import sailpoint.connector.ConnectorFactory;
+import java.util.List;
+import java.io.FileWriter;
+
+// ── 1. Récupérer toutes les applications ──
+QueryOptions qo = new QueryOptions();
+List apps = context.getObjects(Application.class, qo);
+
+// ── 2. Compteurs ──
+int pass = 0;
+int fail = 0;
+int skip = 0;
+
+// ── 3. Lignes HTML (concaténation simple) ──
+String rows = "";
+
+for (int i = 0; i < apps.size(); i++) {
+
+    Application app = (Application) apps.get(i);
+    String name = app.getName();
+    String type = app.getType();
+
+    // App désactivée → SKIPPED
+    if (app.isDisabled()) {
+        skip++;
+        rows = rows + "<tr>"
+             + "<td><b style='color:orange'>SKIPPED</b></td>"
+             + "<td>" + name + "</td>"
+             + "<td>" + type + "</td>"
+             + "<td>—</td>"
+             + "<td>désactivée</td>"
+             + "</tr>";
+        continue;
+    }
+
+    // Test de connexion
+    try {
+        ConnectorFactory.getConnector(app, null).testConfiguration();
+        pass++;
+        rows = rows + "<tr>"
+             + "<td><b style='color:#00e5a0'>SUCCESS</b></td>"
+             + "<td>" + name + "</td>"
+             + "<td>" + type + "</td>"
+             + "<td>OK</td>"
+             + "<td>—</td>"
+             + "</tr>";
+    } catch (Exception e) {
+        fail++;
+        String msg = e.getMessage();
+        if (msg == null) msg = "Erreur inconnue";
+        if (msg.length() > 150) msg = msg.substring(0, 150) + "...";
+        rows = rows + "<tr>"
+             + "<td><b style='color:#ff3d5a'>FAILURE</b></td>"
+             + "<td>" + name + "</td>"
+             + "<td>" + type + "</td>"
+             + "<td>KO</td>"
+             + "<td>" + msg + "</td>"
+             + "</tr>";
+    }
+}
+
+// ── 4. HTML complet ──
+String html = "<html><head><meta charset='UTF-8'>"
++ "<style>"
++ "body{background:#0a0c10;color:#d0d8e8;font-family:monospace;padding:32px}"
++ "h1{color:#fff;margin-bottom:4px}p{color:#666;margin-bottom:24px}"
++ ".cards{display:flex;gap:16px;margin-bottom:32px}"
++ ".card{background:#10141c;border:1px solid #1e2535;padding:20px 28px;border-radius:6px;min-width:100px}"
++ ".card .num{font-size:40px;font-weight:bold;line-height:1}"
++ ".card .lbl{font-size:11px;color:#666;margin-top:4px;text-transform:uppercase;letter-spacing:.1em}"
++ ".t{color:#00e5a0}.f{color:#ff3d5a}.s{color:orange}.a{color:#5b8aff}"
++ "table{width:100%;border-collapse:collapse}"
++ "th{text-align:left;font-size:11px;color:#666;padding:10px 12px;border-bottom:1px solid #1e2535;text-transform:uppercase;letter-spacing:.1em}"
++ "td{padding:11px 12px;border-bottom:1px solid #12171f;font-size:13px}"
++ "tr:hover td{background:#0f1520}"
++ "</style></head><body>"
++ "<h1>IIQ Connector Report</h1>"
++ "<p>" + apps.size() + " applications testées</p>"
++ "<div class='cards'>"
++ "<div class='card'><div class='num a'>" + apps.size() + "</div><div class='lbl'>Total</div></div>"
++ "<div class='card'><div class='num t'>" + pass + "</div><div class='lbl'>Success</div></div>"
++ "<div class='card'><div class='num f'>" + fail + "</div><div class='lbl'>Failure</div></div>"
++ "<div class='card'><div class='num s'>" + skip + "</div><div class='lbl'>Skipped</div></div>"
++ "</div>"
++ "<table>"
++ "<tr><th>Statut</th><th>Application</th><th>Type</th><th>Résultat</th><th>Message</th></tr>"
++ rows
++ "</table>"
++ "</body></html>";
+
+// ── 5. Écriture du fichier ──
+FileWriter fw = new FileWriter("/tmp/connector-report.html");
+fw.write(html);
+fw.close();
+
+return "DONE — SUCCESS:" + pass + " FAILURE:" + fail + " SKIPPED:" + skip
+     + " | rapport → /tmp/connector-report.html";
+
+  ]]></Source>
+</Rule>
